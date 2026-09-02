@@ -1,0 +1,152 @@
+# Curated trend catalog.
+#
+# Each entry:
+#   id:           stable slug, used as the key everywhere downstream
+#   keyword:      exact string sent to Google Trends
+#   display_name: human-readable label for charts/UI
+#   category:     aesthetic | garment | accessory | styling
+#   notes:        why this keyword was chosen (editorial judgement, kept visible)
+
+- id: mob_wife
+  keyword: "mob wife aesthetic"
+  display_name: "Mob wife aesthetic"
+  category: aesthetic
+  notes: "Peaked Jan 2024, post-quiet-luxury backlash; sharp rise and fall over roughly two months."
+
+- id: cargo_pants
+  keyword: "cargo pants trend"
+  display_name: "Cargo pants"
+  category: garment
+  notes: "Slow-burn Y2K revival starting 2021, still visible in search interest through 2023."
+
+- id: coastal_grandmother
+  keyword: "coastal grandmother aesthetic"
+  display_name: "Coastal grandmother"
+  category: aesthetic
+  notes: "Summer 2022 microtrend tied to a single viral TikTok essay; faded by autumn."
+
+- id: barbiecore
+  keyword: "barbiecore"
+  display_name: "Barbiecore"
+  category: aesthetic
+  notes: "Spiked around the July 2023 Barbie movie release — a textbook single-event fad."
+
+- id: balletcore
+  keyword: "balletcore aesthetic"
+  display_name: "Balletcore"
+  category: aesthetic
+  notes: "2022-2023 ballet-flat and wrap-top styling, moderate multi-month burn."
+
+- id: quiet_luxury
+  keyword: "quiet luxury fashion"
+  display_name: "Quiet luxury"
+  category: aesthetic
+  notes: "Started 2023 alongside Succession's final season; sustained interest with no clear peak through 2026 — kept in to exercise the 'hasn't peaked yet' lifecycle path."
+
+- id: bow_trend
+  keyword: "bow trend fashion"
+  display_name: "Bow trend"
+  category: styling
+  notes: "Coquette-adjacent styling detail that rose steadily through 2023-2024."
+
+- id: strawberry_dress
+  keyword: "strawberry dress"
+  display_name: "Strawberry dress"
+  category: garment
+  notes: "The Lirika Matoshi dress went viral almost overnight in summer 2020 — a classic fast fad."
+
+- id: y2k_low_rise
+  keyword: "low rise jeans"
+  display_name: "Y2K low-rise jeans"
+  category: garment
+  notes: "Slow multi-year revival from 2021 through 2024, unlike most single-season denim fads."
+
+- id: tomato_girl
+  keyword: "tomato girl aesthetic"
+  display_name: "Tomato girl summer"
+  category: aesthetic
+  notes: "Short-lived, Mediterranean-inspired summer 2023 aesthetic."
+
+- id: clean_girl
+  keyword: "clean girl aesthetic"
+  display_name: "Clean girl"
+  category: aesthetic
+  notes: "Emerged 2022; slower burn than most TikTok aesthetics, still referenced through 2024."
+
+- id: indie_sleaze
+  keyword: "indie sleaze fashion"
+  display_name: "Indie sleaze"
+  category: aesthetic
+  notes: "2022 nostalgia revival of 2000s indie style; hype cooled noticeably by 2023."
+
+- id: dopamine_dressing
+  keyword: "dopamine dressing"
+  display_name: "Dopamine dressing"
+  category: styling
+  notes: "Colour-forward styling trend that spiked in early 2022."
+
+- id: cottagecore
+  keyword: "cottagecore fashion"
+  display_name: "Cottagecore"
+  category: aesthetic
+  notes: "Pandemic-era slow burn starting 2020, gradually fading through 2022."
+
+- id: blokecore
+  keyword: "blokecore aesthetic"
+  display_name: "Blokecore"
+  category: aesthetic
+  notes: "Fast fad built on vintage soccer jerseys, spiked sharply in 2023."
+
+- id: gorpcore
+  keyword: "gorpcore fashion"
+  display_name: "Gorpcore"
+  category: aesthetic
+  notes: "Outdoor-gear-as-streetwear trend with a slow multi-year rise, 2021-2023."
+
+- id: bucket_hat
+  keyword: "bucket hat trend"
+  display_name: "Bucket hat"
+  category: accessory
+  notes: "Steady resurgence through 2021 — a long tail rather than a sharp fad."
+
+- id: chunky_sneakers
+  keyword: "chunky sneakers trend"
+  display_name: "Chunky sneakers (dad shoes)"
+  category: garment
+  notes: "2018-2020 fad, one of the earlier viral 'ugly shoe' trends, useful as an older reference point."
+
+- id: e_girl
+  keyword: "e-girl aesthetic"
+  display_name: "E-girl"
+  category: aesthetic
+  notes: "2019-2021 alt/emo-influenced TikTok aesthetic; predates most other entries in this catalog."
+
+- id: balaclava
+  keyword: "balaclava fashion trend"
+  display_name: "Balaclava"
+  category: accessory
+  notes: "Sharp winter 2022 micro-fad, essentially gone by spring 2023."
+
+- id: old_money
+  keyword: "old money aesthetic"
+  display_name: "Old money aesthetic"
+  category: aesthetic
+  notes: "2022-2023 preppy-luxury aesthetic — kept distinct from quiet_luxury to compare two related but separate keywords."
+
+- id: micro_bags
+  keyword: "micro bag trend"
+  display_name: "Micro bags"
+  category: accessory
+  notes: "Tiny, near-nonfunctional handbags went viral 2021-2022, a fast accessory fad."
+
+- id: platform_shoes
+  keyword: "platform shoes trend"
+  display_name: "Platform shoes"
+  category: garment
+  notes: "Y2K revival with a slower multi-year burn from 2021 onward, unlike most footwear fads here."
+
+- id: sheer_layering
+  keyword: "sheer layering fashion"
+  display_name: "Sheer layering"
+  category: styling
+  notes: "2023 styling trend of visible layering with sheer fabrics over solid pieces."
