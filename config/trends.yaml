@@ -6,147 +6,110 @@
 #   display_name: human-readable label for charts/UI
 #   category:     aesthetic | garment | accessory | styling
 #   notes:        why this keyword was chosen (editorial judgement, kept visible)
+#
+# Every keyword below was probed against live Google Trends over
+# 2021-09-01 .. 2026-09-01, geo=US, weekly granularity, before being kept.
+# Peak weeks quoted in the notes are measured, not assumed.
+# Selection rules and the keywords that were rejected are in docs/trend-selection.md.
 
 - id: mob_wife
-  keyword: "mob wife aesthetic"
+  keyword: "mob wife"
   display_name: "Mob wife aesthetic"
   category: aesthetic
-  notes: "Peaked Jan 2024, post-quiet-luxury backlash; sharp rise and fall over roughly two months."
+  notes: "Flash fad. Flat baseline 2021-2023, peaks the week of 2024-01-14, back to baseline within roughly six weeks. The cleanest rise-and-fall in the catalog."
 
-- id: cargo_pants
-  keyword: "cargo pants trend"
-  display_name: "Cargo pants"
-  category: garment
-  notes: "Slow-burn Y2K revival starting 2021, still visible in search interest through 2023."
+- id: demure
+  keyword: "demure"
+  display_name: "Very demure"
+  category: styling
+  notes: "The sharpest decay available. Essentially zero searches before August 2024, peaks 2024-08-18, and is back to 1% of peak by 2025. Highest absolute volume of any entry — roughly 130x the mob wife peak — so it must never share a Trends batch with a smaller keyword."
 
-- id: coastal_grandmother
-  keyword: "coastal grandmother aesthetic"
-  display_name: "Coastal grandmother"
+- id: labubu
+  keyword: "labubu"
+  display_name: "Labubu charms"
+  category: accessory
+  notes: "2025's dominant accessory fad. Zero until 2024, peaks 2025-07-13, down to ~19% of peak through 2026. Second-highest volume here, so it also needs its own batch."
+
+- id: brat_summer
+  keyword: "brat summer"
+  display_name: "Brat summer"
   category: aesthetic
-  notes: "Summer 2022 microtrend tied to a single viral TikTok essay; faded by autumn."
+  notes: "Single-season fad tied to one album release. Zero before 2024, peaks 2024-07-21, 3% of peak in 2025. Useful as the seasonal-fad archetype against demure's meme-fad shape."
+
+- id: office_siren
+  keyword: "office siren"
+  display_name: "Office siren"
+  category: aesthetic
+  notes: "Two-stage lifecycle: builds through 2024, peaks 2025-03-16, then falls to ~20% of peak in 2026. One of the few entries whose rise and fall both sit inside the window."
+
+- id: mocha_mousse
+  keyword: "mocha mousse"
+  display_name: "Mocha Mousse"
+  category: styling
+  notes: "Colour-of-the-year fad with a known trigger date. Peaks 2024-12-01 on the Pantone announcement, halves in 2025, ~14% of peak by 2026 — a calendar-driven decay to compare against organic ones."
+
+- id: coquette
+  keyword: "coquette aesthetic"
+  display_name: "Coquette"
+  category: aesthetic
+  notes: "Replaces the earlier 'bow trend fashion' keyword, which returned almost no data. Rises 2021-2023, peaks 2024-01-14, settles to a lower plateau rather than vanishing."
+
+- id: tradwife
+  keyword: "tradwife"
+  display_name: "Tradwife"
+  category: aesthetic
+  notes: "Long-tailed decay: peaks 2024-02-25 and is still at ~78% of peak in 2026. Interest is driven as much by cultural commentary as by styling, which is worth stating when interpreting its curve."
+
+- id: underconsumption
+  keyword: "underconsumption"
+  display_name: "Underconsumption core"
+  category: aesthetic
+  notes: "Anti-trend trend. Peaks 2024-12-29, holds through 2025, then halves in 2026 — a slower decay than the aesthetics it was reacting against."
+
+- id: bag_charm
+  keyword: "bag charm"
+  display_name: "Bag charms"
+  category: accessory
+  notes: "Double-peaked: a 2024-10-27 high, a 2025 trough, then a second 2026 rise. The only revival shape in the catalog, and a good stress test for peak detection that assumes a single maximum."
 
 - id: barbiecore
   keyword: "barbiecore"
   display_name: "Barbiecore"
   category: aesthetic
-  notes: "Spiked around the July 2023 Barbie movie release — a textbook single-event fad."
+  notes: "Textbook single-event fad. Peaks 2023-07-16 on the film release and drops to under 10% of peak the following year."
 
-- id: balletcore
-  keyword: "balletcore aesthetic"
-  display_name: "Balletcore"
+- id: coastal_grandmother
+  keyword: "coastal grandmother"
+  display_name: "Coastal grandmother"
   category: aesthetic
-  notes: "2022-2023 ballet-flat and wrap-top styling, moderate multi-month burn."
+  notes: "One-summer microtrend. Peaks 2022-07-17 and never recovers — 2023 onward sits below 20% of peak."
 
-- id: quiet_luxury
-  keyword: "quiet luxury fashion"
-  display_name: "Quiet luxury"
+- id: cottagecore
+  keyword: "cottagecore"
+  display_name: "Cottagecore"
   category: aesthetic
-  notes: "Started 2023 alongside Succession's final season; sustained interest with no clear peak through 2026 — kept in to exercise the 'hasn't peaked yet' lifecycle path."
-
-- id: bow_trend
-  keyword: "bow trend fashion"
-  display_name: "Bow trend"
-  category: styling
-  notes: "Coquette-adjacent styling detail that rose steadily through 2023-2024."
-
-- id: strawberry_dress
-  keyword: "strawberry dress"
-  display_name: "Strawberry dress"
-  category: garment
-  notes: "The Lirika Matoshi dress went viral almost overnight in summer 2020 — a classic fast fad."
-
-- id: y2k_low_rise
-  keyword: "low rise jeans"
-  display_name: "Y2K low-rise jeans"
-  category: garment
-  notes: "Slow multi-year revival from 2021 through 2024, unlike most single-season denim fads."
-
-- id: tomato_girl
-  keyword: "tomato girl aesthetic"
-  display_name: "Tomato girl summer"
-  category: aesthetic
-  notes: "Short-lived, Mediterranean-inspired summer 2023 aesthetic."
+  notes: "Enters the window already declining from its 2020 high and fades steadily through 2025. Exercises the 'peak precedes the window' path that most entries do not."
 
 - id: clean_girl
   keyword: "clean girl aesthetic"
   display_name: "Clean girl"
   category: aesthetic
-  notes: "Emerged 2022; slower burn than most TikTok aesthetics, still referenced through 2024."
-
-- id: indie_sleaze
-  keyword: "indie sleaze fashion"
-  display_name: "Indie sleaze"
-  category: aesthetic
-  notes: "2022 nostalgia revival of 2000s indie style; hype cooled noticeably by 2023."
-
-- id: dopamine_dressing
-  keyword: "dopamine dressing"
-  display_name: "Dopamine dressing"
-  category: styling
-  notes: "Colour-forward styling trend that spiked in early 2022."
-
-- id: cottagecore
-  keyword: "cottagecore fashion"
-  display_name: "Cottagecore"
-  category: aesthetic
-  notes: "Pandemic-era slow burn starting 2020, gradually fading through 2022."
-
-- id: blokecore
-  keyword: "blokecore aesthetic"
-  display_name: "Blokecore"
-  category: aesthetic
-  notes: "Fast fad built on vintage soccer jerseys, spiked sharply in 2023."
-
-- id: gorpcore
-  keyword: "gorpcore fashion"
-  display_name: "Gorpcore"
-  category: aesthetic
-  notes: "Outdoor-gear-as-streetwear trend with a slow multi-year rise, 2021-2023."
-
-- id: bucket_hat
-  keyword: "bucket hat trend"
-  display_name: "Bucket hat"
-  category: accessory
-  notes: "Steady resurgence through 2021 — a long tail rather than a sharp fad."
-
-- id: chunky_sneakers
-  keyword: "chunky sneakers trend"
-  display_name: "Chunky sneakers (dad shoes)"
-  category: garment
-  notes: "2018-2020 fad, one of the earlier viral 'ugly shoe' trends, useful as an older reference point."
-
-- id: e_girl
-  keyword: "e-girl aesthetic"
-  display_name: "E-girl"
-  category: aesthetic
-  notes: "2019-2021 alt/emo-influenced TikTok aesthetic; predates most other entries in this catalog."
-
-- id: balaclava
-  keyword: "balaclava fashion trend"
-  display_name: "Balaclava"
-  category: accessory
-  notes: "Sharp winter 2022 micro-fad, essentially gone by spring 2023."
+  notes: "Peaks 2022-05-29 but never decays properly — still above half of peak four years later. The catalog's main example of a trend that became a baseline."
 
 - id: old_money
   keyword: "old money aesthetic"
   display_name: "Old money aesthetic"
   category: aesthetic
-  notes: "2022-2023 preppy-luxury aesthetic — kept distinct from quiet_luxury to compare two related but separate keywords."
+  notes: "Broad plateau rather than a spike: peaks 2023-09-03 with over half the weeks in the window sitting above 50% of peak. Kept as the low-decay counterexample."
 
-- id: micro_bags
-  keyword: "micro bag trend"
-  display_name: "Micro bags"
+- id: balaclava
+  keyword: "balaclava"
+  display_name: "Balaclava"
   category: accessory
-  notes: "Tiny, near-nonfunctional handbags went viral 2021-2022, a fast accessory fad."
+  notes: "Not a decay curve at all — an annual winter cycle that repeats at near-full amplitude every year. Kept deliberately so seasonality is not mistaken for a lifecycle."
 
-- id: platform_shoes
-  keyword: "platform shoes trend"
-  display_name: "Platform shoes"
-  category: garment
-  notes: "Y2K revival with a slower multi-year burn from 2021 onward, unlike most footwear fads here."
-
-- id: sheer_layering
-  keyword: "sheer layering fashion"
-  display_name: "Sheer layering"
-  category: styling
-  notes: "2023 styling trend of visible layering with sheer fabrics over solid pieces."
+- id: bucket_hat
+  keyword: "bucket hat"
+  display_name: "Bucket hat"
+  category: accessory
+  notes: "The summer counterpart to balaclava: a repeating June-July cycle with a mild downward drift. Second seasonality control."

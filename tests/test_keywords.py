@@ -19,7 +19,7 @@ VALID_YAML = """
 def test_load_trends_default_catalog():
     trends = load_trends()
 
-    assert 20 <= len(trends) <= 30
+    assert 12 <= len(trends) <= 30
     assert all(isinstance(t, Trend) for t in trends)
     assert len({t.id for t in trends}) == len(trends)
     assert len({t.keyword for t in trends}) == len(trends)
