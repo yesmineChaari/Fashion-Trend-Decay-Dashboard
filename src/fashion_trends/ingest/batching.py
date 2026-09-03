@@ -22,7 +22,7 @@ import pandas as pd
 
 from fashion_trends.keywords import Trend
 from fashion_trends.settings import Settings
-from fashion_trends.ingest.pytrends_client import fetch_interest_over_time
+from fashion_trends.ingest.cache import fetch_batch, write_raw_manifest
 
 
 def build_batches(
@@ -139,19 +139,24 @@ class CollectionResult:
 def collect_normalized_trends(
     trends: list[Trend],
     settings: Settings,
+    refresh: bool = False,
 ) -> CollectionResult:
     """Fetch every batch for `trends` and rescale them onto one shared axis.
 
-    This performs the network calls (via `fetch_interest_over_time`) and the
-    anchor-based rescaling, but does not write anything to disk — persisting
-    the raw and rescaled data is the caller's job, so both stay available to
-    keep the raw pull from ever being overwritten.
+    Each batch goes through the on-disk raw cache (`fashion_trends.ingest.cache`),
+    so a repeat run within `settings.cache_ttl_days` makes no network requests;
+    `refresh=True` forces every batch to re-pull. This writes the raw pulls to
+    the cache and the provenance manifest as a side effect, but persisting the
+    rescaled/processed data is still the caller's job.
     """
     batches = build_batches(trends, settings.anchor_keyword, settings.max_batch_keywords)
-    raw_frames = [
-        fetch_interest_over_time(batch, settings.timeframe, settings.geo, settings)
+    cached_batches = [
+        fetch_batch(batch, settings.timeframe, settings.geo, settings, refresh=refresh)
         for batch in batches
     ]
+    write_raw_manifest(settings, cached_batches)
+
+    raw_frames = [cached.frame for cached in cached_batches]
     rescaled_frames = rescale_batches(raw_frames, settings.anchor_keyword)
 
     results: dict[str, NormalizedTrend] = {}

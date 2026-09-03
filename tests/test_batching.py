@@ -1,3 +1,5 @@
+import json
+from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
 import pandas as pd
@@ -10,8 +12,21 @@ from fashion_trends.ingest.batching import (
     is_low_resolution,
     rescale_batches,
 )
+from fashion_trends.ingest.cache import CachedBatch
 from fashion_trends.keywords import Trend
 from fashion_trends.settings import Settings
+
+
+def _cached(frame, keywords=None, source="network"):
+    return CachedBatch(
+        keywords=keywords if keywords is not None else list(frame.columns),
+        timeframe="today 5-y",
+        geo="US",
+        frame=frame,
+        fetched_at=datetime(2026, 8, 31, tzinfo=timezone.utc),
+        source=source,
+        pytrends_version="4.9.2",
+    )
 
 # A synthetic placeholder, deliberately not the real `Settings.anchor_keyword`
 # default — these tests exercise the rescaling math, not the anchor choice.
@@ -139,7 +154,7 @@ def test_is_low_resolution_does_not_flag_series_at_or_above_threshold():
 # ---- collect_normalized_trends ----------------------------------------------------
 
 
-def test_collect_normalized_trends_flags_low_resolution_and_keeps_raw(monkeypatch):
+def test_collect_normalized_trends_flags_low_resolution_and_keeps_raw(monkeypatch, tmp_path):
     trends = [
         _trend("mob", "mob wife"),
         _trend("demure", "demure", isolate=True),
@@ -150,13 +165,14 @@ def test_collect_normalized_trends_flags_low_resolution_and_keeps_raw(monkeypatc
         low_resolution_threshold=5.0,
         request_delay_seconds=0.0,
         max_retries=0,
+        data_raw_dir=tmp_path,
     )
 
     demure_batch = pd.DataFrame({ANCHOR: [1, 2], "demure": [50, 100]}, index=_dates(2))
     mob_batch = pd.DataFrame({ANCHOR: [40, 100], "mob wife": [1, 3]}, index=_dates(2))
 
-    fetch = MagicMock(side_effect=[demure_batch, mob_batch])
-    monkeypatch.setattr(batching_module, "fetch_interest_over_time", fetch)
+    fetch = MagicMock(side_effect=[_cached(demure_batch), _cached(mob_batch)])
+    monkeypatch.setattr(batching_module, "fetch_batch", fetch)
 
     result = collect_normalized_trends(trends, settings)
 
@@ -176,3 +192,26 @@ def test_collect_normalized_trends_flags_low_resolution_and_keeps_raw(monkeypatc
     assert result.trends["mob wife"].low_resolution is True
     assert result.trends["demure"].low_resolution is False
     assert result.low_resolution_keywords == ["mob wife"]
+
+    # Every batch is recorded in the raw-pull manifest for provenance.
+    manifest = json.loads((tmp_path / "manifest.json").read_text(encoding="utf-8"))
+    manifest_keywords = {entry["keyword"] for entry in manifest["series"]}
+    assert manifest_keywords == {ANCHOR, "demure", "mob wife"}
+
+
+def test_collect_normalized_trends_forwards_refresh_flag(monkeypatch, tmp_path):
+    trends = [_trend("mob", "mob wife")]
+    settings = Settings(
+        anchor_keyword=ANCHOR,
+        max_batch_keywords=5,
+        request_delay_seconds=0.0,
+        max_retries=0,
+        data_raw_dir=tmp_path,
+    )
+    batch = pd.DataFrame({ANCHOR: [10, 20], "mob wife": [1, 2]}, index=_dates(2))
+    fetch = MagicMock(return_value=_cached(batch))
+    monkeypatch.setattr(batching_module, "fetch_batch", fetch)
+
+    collect_normalized_trends(trends, settings, refresh=True)
+
+    assert fetch.call_args.kwargs["refresh"] is True
