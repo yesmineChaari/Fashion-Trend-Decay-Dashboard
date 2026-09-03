@@ -31,6 +31,44 @@ class Settings:
 
     smoothing_window: int = 4
 
+    # Google Trends caps requests at 5 keywords and rescales each batch 0-100
+    # relative to that batch's own maximum, so raw values are not comparable
+    # across batches. Including this keyword in every batch gives a shared
+    # reference point: the ratio between its peak in each batch and its peak
+    # in the reference batch is the factor that puts every batch back on one
+    # axis (see `fashion_trends.ingest.batching`).
+    #
+    # "haute couture" was chosen after probing several candidates against
+    # live Google Trends (2021-09-01..2026-09-01, geo=US — see
+    # docs/trend-selection.md). Generic garment/shopping nouns ("little
+    # black dress", "vintage fashion", "personal style") all turned out to
+    # carry the same spring-2026 data artifact documented in that file for
+    # `cargo pants` and friends — an unexplained spike to their all-time
+    # maximum on 2026-04-12 or 2026-02-08 shared with the non-fashion control
+    # keywords. "haute couture" doesn't: it is dense every week (262/262
+    # non-zero), moderate in magnitude (mean 23.5, min 14 — comparable to
+    # most catalog entries), and its tallest weeks land on real Haute
+    # Couture Fashion Week dates (Jan/Jul, matching the same weeks in
+    # 2022-2025) rather than an arbitrary artifact week. It is not perfectly
+    # flat — couture week itself roughly doubles it twice a year — but the
+    # rescaling math only uses its measured *peak* per batch, which a real
+    # recurring seasonal high still provides reliably; see
+    # `fashion_trends.ingest.batching.rescale_batches`.
+    #
+    # The two catalog trends whose own peak is an order of magnitude above
+    # the rest (`demure`, `labubu`; see their `isolate: true` flag in
+    # `config/trends.yaml`) still crush the anchor's resolution down to a
+    # handful of integer values in their solo batch — that is an inherent
+    # limit of anchoring against a single fixed keyword, not a sign this
+    # anchor was chosen badly, and it is why raw per-batch values are always
+    # kept alongside the rescaled ones.
+    anchor_keyword: str = "haute couture"
+    max_batch_keywords: int = 5
+    # Rescaled peak below which a trend is flagged `low_resolution`: once its
+    # tallest point barely clears the noise floor of Google Trends' integer
+    # 0-100 scale, its shape cannot be trusted for decay metrics.
+    low_resolution_threshold: float = 5.0
+
     data_raw_dir: Path = REPO_ROOT / "data" / "raw"
     data_processed_dir: Path = REPO_ROOT / "data" / "processed"
     figures_dir: Path = REPO_ROOT / "outputs" / "figures"
@@ -45,6 +83,9 @@ class Settings:
             "timeframe": self.timeframe,
             "geo": self.geo,
             "smoothing_window": self.smoothing_window,
+            "anchor_keyword": self.anchor_keyword,
+            "max_batch_keywords": self.max_batch_keywords,
+            "low_resolution_threshold": self.low_resolution_threshold,
             "data_raw_dir": str(self.data_raw_dir),
             "data_processed_dir": str(self.data_processed_dir),
             "figures_dir": str(self.figures_dir),
@@ -60,6 +101,9 @@ _FIELDS: tuple[tuple[str, Callable[[str], Any]], ...] = (
     ("timeframe", str),
     ("geo", str),
     ("smoothing_window", int),
+    ("anchor_keyword", str),
+    ("max_batch_keywords", int),
+    ("low_resolution_threshold", float),
     ("data_raw_dir", Path),
     ("data_processed_dir", Path),
     ("figures_dir", Path),

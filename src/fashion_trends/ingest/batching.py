@@ -1,0 +1,175 @@
+"""Split trends into Google Trends batches and rescale them onto one axis.
+
+Google Trends accepts at most five keywords per request and scales each
+batch's values 0-100 relative to that batch's own maximum, so a "60" in one
+batch and a "60" in another are not comparable — the batches don't share an
+axis. Every batch built here carries a shared anchor keyword
+(`settings.anchor_keyword`); the ratio between the anchor's peak in a given
+batch and its peak in the reference batch is what puts that batch back on a
+common scale.
+
+The four headline decay metrics are each relative to a trend's own peak, so
+they don't need any of this — this module only matters for comparing trends
+to each other (the shared decay-curve chart) and for protecting low-volume
+trends from being quantized to noise by a batchmate that dominates them.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+import pandas as pd
+
+from fashion_trends.keywords import Trend
+from fashion_trends.settings import Settings
+from fashion_trends.ingest.pytrends_client import fetch_interest_over_time
+
+
+def build_batches(
+    trends: list[Trend],
+    anchor_keyword: str,
+    max_batch_keywords: int = 5,
+) -> list[list[str]]:
+    """Group `trends` into keyword lists for `fetch_interest_over_time`.
+
+    Every batch starts with `anchor_keyword` plus up to
+    `max_batch_keywords - 1` trend keywords, keeping every request within
+    Google Trends' limit while guaranteeing a shared keyword to rescale
+    against later. A trend with `isolate=True` gets a batch to itself
+    (anchor + that one keyword) — see `Trend.isolate` for why.
+    """
+    batch_capacity = max_batch_keywords - 1
+    if batch_capacity < 1:
+        raise ValueError("max_batch_keywords must allow at least one trend keyword alongside the anchor")
+
+    isolated = [t for t in trends if t.isolate]
+    shared = [t for t in trends if not t.isolate]
+
+    batches = [[anchor_keyword, t.keyword] for t in isolated]
+
+    for start in range(0, len(shared), batch_capacity):
+        chunk = shared[start : start + batch_capacity]
+        batches.append([anchor_keyword] + [t.keyword for t in chunk])
+
+    return batches
+
+
+def rescale_batches(
+    batch_frames: list[pd.DataFrame],
+    anchor_keyword: str,
+    reference_index: int | None = None,
+) -> list[pd.DataFrame]:
+    """Rescale every batch in `batch_frames` onto one shared axis.
+
+    Each batch's own 0-100 scale is relative to that batch's maximum, so raw
+    values from two batches aren't comparable even when equal. Because every
+    batch shares `anchor_keyword`, the ratio between the anchor's peak in a
+    reference batch and its peak in each other batch is the factor that
+    converts that batch's values onto the reference batch's scale.
+
+    `reference_index` defaults to the batch where the anchor's raw peak is
+    highest — the batch where it was least crushed by a dominant batchmate,
+    and so the batch whose anchor reading carries the least quantization
+    noise to divide by. A batch containing an `isolate`-flagged trend (see
+    `Trend.isolate`) is the batch to avoid here, since that trend's whole
+    point is dominating everything else in its batch, the anchor included.
+
+    Returns new frames — `batch_frames` are left untouched so callers can
+    persist the raw pull alongside the rescaled one.
+    """
+    if not batch_frames:
+        return []
+
+    anchor_peaks = [frame[anchor_keyword].max() for frame in batch_frames]
+    if reference_index is None:
+        reference_index = max(range(len(anchor_peaks)), key=lambda i: anchor_peaks[i])
+
+    reference_peak = anchor_peaks[reference_index]
+    if reference_peak <= 0:
+        raise ValueError(
+            f"anchor keyword {anchor_keyword!r} has a zero peak in the reference batch "
+            f"(index {reference_index}) — cannot compute a rescaling ratio from it"
+        )
+
+    rescaled = []
+    for frame, batch_peak in zip(batch_frames, anchor_peaks):
+        if batch_peak <= 0:
+            raise ValueError(
+                f"anchor keyword {anchor_keyword!r} has a zero peak in one of the batches "
+                "being rescaled — check the batch actually included the anchor keyword"
+            )
+        ratio = reference_peak / batch_peak
+        rescaled.append(frame.mul(ratio))
+
+    return rescaled
+
+
+def is_low_resolution(rescaled_series: pd.Series, threshold: float) -> bool:
+    """True if `rescaled_series` never clears the noise floor after rescaling.
+
+    A series whose tallest point sits below `threshold` on the shared
+    rescaled axis is mostly integer quantization noise, not a measured
+    shape — its decay metrics would be reporting confidence the data
+    doesn't have.
+    """
+    return bool(rescaled_series.max() < threshold)
+
+
+@dataclass(frozen=True)
+class NormalizedTrend:
+    keyword: str
+    raw: pd.Series
+    rescaled: pd.Series
+    low_resolution: bool
+
+
+@dataclass(frozen=True)
+class CollectionResult:
+    anchor_keyword: str
+    batches: list[list[str]]
+    raw_batch_frames: list[pd.DataFrame]
+    trends: dict[str, NormalizedTrend]
+
+    @property
+    def low_resolution_keywords(self) -> list[str]:
+        """Keywords flagged `low_resolution`, sorted for stable output."""
+        return sorted(k for k, t in self.trends.items() if t.low_resolution)
+
+
+def collect_normalized_trends(
+    trends: list[Trend],
+    settings: Settings,
+) -> CollectionResult:
+    """Fetch every batch for `trends` and rescale them onto one shared axis.
+
+    This performs the network calls (via `fetch_interest_over_time`) and the
+    anchor-based rescaling, but does not write anything to disk — persisting
+    the raw and rescaled data is the caller's job, so both stay available to
+    keep the raw pull from ever being overwritten.
+    """
+    batches = build_batches(trends, settings.anchor_keyword, settings.max_batch_keywords)
+    raw_frames = [
+        fetch_interest_over_time(batch, settings.timeframe, settings.geo, settings)
+        for batch in batches
+    ]
+    rescaled_frames = rescale_batches(raw_frames, settings.anchor_keyword)
+
+    results: dict[str, NormalizedTrend] = {}
+    for raw_frame, rescaled_frame in zip(raw_frames, rescaled_frames):
+        for keyword in raw_frame.columns:
+            if keyword == settings.anchor_keyword:
+                continue
+            rescaled_series = rescaled_frame[keyword]
+            results[keyword] = NormalizedTrend(
+                keyword=keyword,
+                raw=raw_frame[keyword],
+                rescaled=rescaled_series,
+                low_resolution=is_low_resolution(rescaled_series, settings.low_resolution_threshold),
+            )
+
+    return CollectionResult(
+        anchor_keyword=settings.anchor_keyword,
+        batches=batches,
+        raw_batch_frames=raw_frames,
+        trends=results,
+    )

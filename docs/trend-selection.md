@@ -108,6 +108,54 @@ Batches must therefore group keywords of comparable magnitude, with an anchor
 sized to the group. The two mega-terms should be fetched alone and stitched in
 through a shared anchor rather than batched with the rest.
 
+### Choosing the anchor keyword
+
+The anchor (`Settings.anchor_keyword`, included in every batch) needs measured
+volume, not an assumed one — the same rule as everything else in this file. A
+first instinct was a generic wardrobe-staple noun, on the theory that it would
+be moderate and flat. Probing candidates against live Google Trends
+(2021-09-01..2026-09-01, `geo=US`) showed the opposite: every generic
+garment/shopping noun tried inherits the same spring-2026 artifact described
+above, spiking to its all-time maximum on an arbitrary week that has nothing
+to do with fashion.
+
+| Candidate | 2026 peak week | Peak value | 2021-2025 typical | Verdict |
+| --- | --- | --- | --- | --- |
+| `little black dress` | 2026-04-12 | 100 | 29-38 | Rejected — artifact week |
+| `personal style` | 2026-04-12 | 76 | 9-23 | Rejected — same artifact week |
+| `vintage fashion` | 2026-04-12 | 100 | 6-8 | Rejected — same artifact week |
+| `street style` | 2026-02-08 | 100 | 31-36 | Rejected — artifact week |
+| `capsule wardrobe` | 2026-02-08 | 83 | 15-23 | Rejected — artifact week |
+| `sustainable fashion` | 2026-02-08 | 38 | — | Rejected — artifact week |
+| `thrift shopping` | 2025-12-28 | 6 | — | Rejected — too low-volume to resolve against |
+| `haute couture` | 2026-07-05 | 100 | 28-53 | **Kept** — see below |
+
+`haute couture` was the only candidate whose tallest weeks land on a real
+calendar event instead of the artifact: its top weeks fall in January and
+July every year (2022-07-03: 50, 2023-01-22: 53, 2024-01-21: 51, 2026-07-05:
+100), matching the actual Paris Haute Couture Fashion Week schedule. It is
+dense every week of the window (262/262 non-zero) and moderate in magnitude
+(mean 23.5, min 14), putting it in the same order of magnitude as most
+catalog entries rather than being dominated by them.
+
+It is not perfectly flat — couture week itself roughly doubles it twice a
+year, and 2026 is somewhat elevated versus 2022-2025 even accounting for
+that. But the rescaling in `fashion_trends.ingest.batching.rescale_batches`
+only uses the anchor's measured *peak* within each batch, and a real,
+recurring seasonal high still gives a reliable reference point — unlike an
+artifact spike shared with keywords that have nothing to do with fashion.
+
+A live run of `collect_normalized_trends` against `mob_wife`, `demure`, and
+`labubu` (each `isolate`-flagged trend gets its own anchor pairing) rescaled
+both mega-trends to the same peak, even though this file's own measurements
+put `demure` at roughly 2x `labubu`'s magnitude. That is the anchor
+crush-to-a-handful-of-integers limit described in `Settings.anchor_keyword`
+showing up in real data, not a bug: the anchor's raw reading in both solo
+batches rounded to the same small integer, so the ratio derived from it
+can't distinguish the two mega-trends' relative size. Their individual decay
+shapes are unaffected — this only limits comparing mega-trends' magnitude
+*to each other*, which is exactly why raw per-batch values are always kept.
+
 ## Window and geography
 
 - **Five years is the maximum window that still returns weekly data.**
@@ -121,9 +169,12 @@ through a shared anchor rather than batched with the rest.
 
 ## Client library
 
-`pytrends`, pinned in `requirements.txt`, was archived in April 2025. Its session
-bootstrap no longer acquires the cookie Google's current flow expects, so the
-first data call returns HTTP 429 regardless of rate limiting. The Google Trends
-endpoint itself is fine — every figure in this document was fetched from it. The
-data source is unchanged; only the client needs to be one that is still
-maintained.
+`pytrends`, pinned in `requirements.txt`, was archived in April 2025, which had
+been assumed to mean its session/cookie bootstrap no longer matches Google's
+current flow. A live smoke test on 2026-09-03 against `pytrends==4.9.2` disproved
+that: a normal fetch, an unknown-keyword fetch, and a second consecutive fetch
+all succeeded with no HTTP 429, through the same client wrapper
+(`src/fashion_trends/ingest/pytrends_client.py`) the rest of the pipeline uses.
+The archived status is still worth watching — an unmaintained package can break
+again without notice — but there is no known live-request failure today, and no
+client swap is warranted unless one resurfaces.

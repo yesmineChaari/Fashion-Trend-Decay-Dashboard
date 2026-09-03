@@ -6,6 +6,11 @@
 #   display_name: human-readable label for charts/UI
 #   category:     aesthetic | garment | accessory | styling
 #   notes:        why this keyword was chosen (editorial judgement, kept visible)
+#   isolate:      optional, default false. true means this keyword's peak dominates
+#                 the rest of the catalog by an order of magnitude and it must be
+#                 fetched in a batch of its own (with only the anchor keyword) —
+#                 see fashion_trends.ingest.batching and the normalisation section
+#                 of docs/trend-selection.md.
 #
 # Every keyword below was probed against live Google Trends over
 # 2021-09-01 .. 2026-09-01, geo=US, weekly granularity, before being kept.
@@ -23,12 +28,14 @@
   display_name: "Very demure"
   category: styling
   notes: "The sharpest decay available. Essentially zero searches before August 2024, peaks 2024-08-18, and is back to 1% of peak by 2025. Highest absolute volume of any entry — roughly 130x the mob wife peak — so it must never share a Trends batch with a smaller keyword."
+  isolate: true
 
 - id: labubu
   keyword: "labubu"
   display_name: "Labubu charms"
   category: accessory
   notes: "2025's dominant accessory fad. Zero until 2024, peaks 2025-07-13, down to ~19% of peak through 2026. Second-highest volume here, so it also needs its own batch."
+  isolate: true
 
 - id: brat_summer
   keyword: "brat summer"
