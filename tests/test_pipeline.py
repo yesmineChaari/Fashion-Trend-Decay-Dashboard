@@ -87,6 +87,7 @@ def test_run_pipeline_persists_series_and_metrics(monkeypatch, tmp_path):
         "display_name",
         "category",
         "interest_raw",
+        "interest_smooth",
         "interest_rescaled",
         "low_resolution",
     ]

@@ -34,6 +34,7 @@ from fashion_trends.ingest.batching import build_batches, is_low_resolution, res
 from fashion_trends.ingest.cache import fetch_batch, write_raw_manifest
 from fashion_trends.ingest.pytrends_client import TrendsClientError
 from fashion_trends.keywords import Trend, load_trends
+from fashion_trends.metrics.smoothing import preprocess_series
 from fashion_trends.settings import Settings, write_manifest
 
 SERIES_FILENAME = "series.parquet"
@@ -126,6 +127,7 @@ def _build_series_frame(
     rescaled_frames: list[pd.DataFrame],
     anchor_keyword: str,
     low_resolution_threshold: float,
+    smoothing_window: int,
 ) -> pd.DataFrame:
     rows = []
     for raw_frame, rescaled_frame in zip(raw_frames, rescaled_frames):
@@ -137,9 +139,16 @@ def _build_series_frame(
                 continue
             rescaled_series = rescaled_frame[keyword]
             low_res = is_low_resolution(rescaled_series, low_resolution_threshold)
-            for date, raw_value, rescaled_value in zip(
-                raw_frame.index, raw_frame[keyword], rescaled_series
-            ):
+
+            # Smoothing is computed on the trend's own raw scale, since the
+            # decay metrics that read it are each relative to a trend's own
+            # peak (see fashion_trends.ingest.batching's module docstring) —
+            # the reindex can introduce gap weeks absent from the rescaled
+            # frame, so that one is aligned onto the same index afterwards.
+            processed = preprocess_series(raw_frame[keyword], smoothing_window)
+            rescaled_series = rescaled_series.reindex(processed.index)
+
+            for date, values in processed.iterrows():
                 rows.append(
                     {
                         "date": date,
@@ -147,8 +156,9 @@ def _build_series_frame(
                         "keyword": trend.keyword,
                         "display_name": trend.display_name,
                         "category": trend.category,
-                        "interest_raw": raw_value,
-                        "interest_rescaled": rescaled_value,
+                        "interest_raw": values["interest_raw"],
+                        "interest_smooth": values["interest_smooth"],
+                        "interest_rescaled": rescaled_series.loc[date],
                         "low_resolution": low_res,
                     }
                 )
@@ -162,6 +172,7 @@ def _build_series_frame(
             "display_name",
             "category",
             "interest_raw",
+            "interest_smooth",
             "interest_rescaled",
             "low_resolution",
         ],
@@ -227,6 +238,7 @@ def run_pipeline(
         rescaled_frames,
         settings.anchor_keyword,
         settings.low_resolution_threshold,
+        settings.smoothing_window,
     )
     metrics = _build_metrics_frame(series, trends_by_keyword)
 
