@@ -11,6 +11,11 @@ a JSON side-car recording its fetch timestamp. A cache hit within
 (or a stale/missing entry) falls through to the network and refreshes the
 cache.
 
+`settings.fixture_mode` bypasses both the network and the on-disk cache
+entirely, serving from the committed `tests/fixtures/` snapshot instead
+(see `fashion_trends.ingest.fixtures`) — batches are labelled `source:
+"fixture"` in the manifest so that provenance stays honest.
+
 `write_raw_manifest` then records one entry per keyword actually pulled —
 whether served from cache or freshly fetched — so any number downstream
 (a chart, a dashboard figure) can be traced back to a pull date.
@@ -28,13 +33,14 @@ from typing import Literal
 
 import pandas as pd
 
-from fashion_trends.ingest.pytrends_client import fetch_interest_over_time
+from fashion_trends.ingest import fixtures
+from fashion_trends.ingest.pytrends_client import NoDataError, fetch_interest_over_time
 from fashion_trends.settings import Settings
 from fashion_trends.settings import write_manifest as _write_run_manifest
 
 MANIFEST_FILENAME = "manifest.json"
 
-Source = Literal["cache", "network"]
+Source = Literal["cache", "network", "fixture"]
 
 
 def _cache_key(keywords: list[str], timeframe: str, geo: str) -> str:
@@ -125,7 +131,27 @@ def fetch_batch(
     no network request at all. `refresh=True`, a missing entry, or a stale
     one all fall through to `fetch_interest_over_time` and (re)write the
     cache entry.
+
+    `settings.fixture_mode` takes precedence over all of the above: it never
+    touches the network or the on-disk cache, serving `keywords` from the
+    committed fixture snapshot instead (`refresh` is ignored in this mode —
+    there's nothing to refresh against).
     """
+    if settings.fixture_mode:
+        try:
+            frame = fixtures.fetch_interest_over_time(keywords)
+        except fixtures.FixtureNotFoundError as exc:
+            raise NoDataError(str(exc)) from exc
+        return CachedBatch(
+            keywords=keywords,
+            timeframe=timeframe,
+            geo=geo,
+            frame=frame,
+            fetched_at=datetime.fromisoformat(fixtures.captured_at()),
+            source="fixture",
+            pytrends_version=fixtures.pytrends_version(),
+        )
+
     key = _cache_key(keywords, timeframe, geo)
     now = _utcnow()
 

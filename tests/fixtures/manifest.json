@@ -1,0 +1,98 @@
+{
+  "anchor_keyword": "haute couture",
+  "generated_at": "2026-09-03T23:04:39.937383+00:00",
+  "geo": "US",
+  "note": "Snapshot for offline development and tests. The real_keywords are a genuine one-time Google Trends pull (via the pinned pytrends version below) made for this fixture set \u2014 not live data, and not refreshed automatically. The synthetic_keywords do not correspond to any real search term; they were added because no catalog keyword exhibits the shape the metrics engine has to survive.",
+  "real_keywords": {
+    "bag charm": {
+      "pulled_at": "2026-09-03T23:04:39.937383+00:00",
+      "source": "live"
+    },
+    "balaclava": {
+      "pulled_at": "2026-09-03T23:04:39.937383+00:00",
+      "source": "live"
+    },
+    "barbiecore": {
+      "pulled_at": "2026-09-03T23:04:39.937383+00:00",
+      "source": "live"
+    },
+    "brat summer": {
+      "pulled_at": "2026-09-03T23:04:39.937383+00:00",
+      "source": "live"
+    },
+    "bucket hat": {
+      "pulled_at": "2026-09-03T23:04:39.937383+00:00",
+      "source": "live"
+    },
+    "clean girl aesthetic": {
+      "pulled_at": "2026-09-03T23:04:39.937383+00:00",
+      "source": "live"
+    },
+    "coastal grandmother": {
+      "pulled_at": "2026-09-03T23:04:39.937383+00:00",
+      "source": "live"
+    },
+    "coquette aesthetic": {
+      "pulled_at": "2026-09-03T23:04:39.937383+00:00",
+      "source": "live"
+    },
+    "cottagecore": {
+      "pulled_at": "2026-09-03T23:04:39.937383+00:00",
+      "source": "live"
+    },
+    "demure": {
+      "pulled_at": "2026-09-03T23:04:39.937383+00:00",
+      "source": "live"
+    },
+    "haute couture": {
+      "pulled_at": "2026-09-03T23:04:39.937383+00:00",
+      "role": "anchor",
+      "source": "live"
+    },
+    "labubu": {
+      "pulled_at": "2026-09-03T23:04:39.937383+00:00",
+      "source": "live"
+    },
+    "mob wife": {
+      "pulled_at": "2026-09-03T23:04:39.937383+00:00",
+      "source": "live"
+    },
+    "mocha mousse": {
+      "pulled_at": "2026-09-03T23:04:39.937383+00:00",
+      "source": "live"
+    },
+    "office siren": {
+      "pulled_at": "2026-09-03T23:04:39.937383+00:00",
+      "source": "live"
+    },
+    "old money aesthetic": {
+      "pulled_at": "2026-09-03T23:04:39.937383+00:00",
+      "source": "live"
+    },
+    "tradwife": {
+      "pulled_at": "2026-09-03T23:04:39.937383+00:00",
+      "source": "live"
+    },
+    "underconsumption": {
+      "pulled_at": "2026-09-03T23:04:39.937383+00:00",
+      "source": "live"
+    }
+  },
+  "row_count": 262,
+  "source_pytrends_version": "4.9.2",
+  "synthetic_keywords": {
+    "fixture_near_zero": {
+      "purpose": "Near-zero low-volume series \u2014 exercises low_resolution flagging and guards decay metrics against dividing by a near-zero peak.",
+      "source": "synthetic"
+    },
+    "fixture_spiky_false_peak": {
+      "purpose": "Flat low baseline with one anomalous single-week spike \u2014 must not be mistaken for the trend's real peak by smoothing or peak detection.",
+      "source": "synthetic"
+    },
+    "fixture_still_rising": {
+      "purpose": "Still climbing at the end of the window, no peak yet \u2014 the has-not-peaked-yet lifecycle path.",
+      "source": "synthetic"
+    }
+  },
+  "timeframe": "today 5-y"
+}

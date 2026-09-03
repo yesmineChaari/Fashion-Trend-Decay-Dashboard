@@ -18,6 +18,7 @@ def test_defaults_match_pipeline_spec():
     assert settings.cache_ttl_days == 7
     assert settings.request_delay_seconds == 1.0
     assert settings.max_retries == 3
+    assert settings.fixture_mode is False
 
 
 def test_settings_is_frozen():
@@ -64,6 +65,37 @@ def test_path_settings_are_overridable(tmp_path):
     settings = load_settings(["--data-raw-dir", str(raw_dir)])
 
     assert settings.data_raw_dir == raw_dir
+
+
+def test_fixture_mode_env_var_overrides_default(monkeypatch):
+    monkeypatch.setenv("FASHION_TRENDS_FIXTURE_MODE", "1")
+
+    assert load_settings([]).fixture_mode is True
+
+
+def test_fixture_mode_bare_env_var_is_a_documented_alias(monkeypatch):
+    monkeypatch.setenv("FIXTURE_MODE", "true")
+
+    assert load_settings([]).fixture_mode is True
+
+
+def test_prefixed_fixture_mode_env_var_wins_over_bare_one(monkeypatch):
+    monkeypatch.setenv("FIXTURE_MODE", "1")
+    monkeypatch.setenv("FASHION_TRENDS_FIXTURE_MODE", "0")
+
+    assert load_settings([]).fixture_mode is False
+
+
+def test_offline_cli_flag_enables_fixture_mode():
+    assert load_settings(["--offline"]).fixture_mode is True
+
+
+def test_fixture_mode_cli_flag_overrides_env_var(monkeypatch):
+    monkeypatch.setenv("FASHION_TRENDS_FIXTURE_MODE", "1")
+
+    settings = load_settings(["--fixture-mode", "0"])
+
+    assert settings.fixture_mode is False
 
 
 def test_write_manifest_records_settings_and_extra_fields(tmp_path):

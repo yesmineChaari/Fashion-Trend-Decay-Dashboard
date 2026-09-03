@@ -85,6 +85,41 @@ def test_fetch_batch_stale_entry_falls_through_to_network(monkeypatch, tmp_path)
     assert fetch.call_count == 2
 
 
+def test_fetch_batch_fixture_mode_serves_without_network_or_disk_cache(monkeypatch, tmp_path):
+    settings = _settings(tmp_path, fixture_mode=True)
+    monkeypatch.setattr(
+        cache_module,
+        "fetch_interest_over_time",
+        MagicMock(side_effect=AssertionError("fixture mode must never call the network")),
+    )
+
+    result = fetch_batch(["haute couture", "mob wife"], "today 5-y", "US", settings)
+
+    assert result.source == "fixture"
+    assert list(result.frame.columns) == ["haute couture", "mob wife"]
+    assert not (tmp_path / "cache").exists()
+
+
+def test_fetch_batch_fixture_mode_ignores_refresh(monkeypatch, tmp_path):
+    settings = _settings(tmp_path, fixture_mode=True)
+    monkeypatch.setattr(
+        cache_module,
+        "fetch_interest_over_time",
+        MagicMock(side_effect=AssertionError("fixture mode must never call the network")),
+    )
+
+    result = fetch_batch(["haute couture"], "today 5-y", "US", settings, refresh=True)
+
+    assert result.source == "fixture"
+
+
+def test_fetch_batch_fixture_mode_raises_no_data_error_for_unknown_keyword(tmp_path):
+    settings = _settings(tmp_path, fixture_mode=True)
+
+    with pytest.raises(cache_module.NoDataError):
+        fetch_batch(["not a real keyword"], "today 5-y", "US", settings)
+
+
 def test_write_raw_manifest_records_one_entry_per_keyword_with_source(tmp_path):
     settings = _settings(tmp_path)
     network_batch = cache_module.CachedBatch(

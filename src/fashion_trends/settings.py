@@ -77,6 +77,12 @@ class Settings:
     request_delay_seconds: float = 1.0
     max_retries: int = 3
 
+    # When set, `fashion_trends.ingest.cache.fetch_batch` serves keywords from
+    # the committed `tests/fixtures/` snapshot instead of Google Trends, so a
+    # rate-limited or offline day is still a day of progress on metrics,
+    # charts, and the dashboard. See `fashion_trends.ingest.fixtures`.
+    fixture_mode: bool = False
+
     def to_manifest(self) -> dict[str, Any]:
         """A JSON-safe view of every setting, for recording alongside run outputs."""
         return {
@@ -92,7 +98,12 @@ class Settings:
             "cache_ttl_days": self.cache_ttl_days,
             "request_delay_seconds": self.request_delay_seconds,
             "max_retries": self.max_retries,
+            "fixture_mode": self.fixture_mode,
         }
+
+
+def _parse_bool(raw: str) -> bool:
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
 # Single source of truth for the env var suffix, CLI flag name, and type
@@ -110,6 +121,7 @@ _FIELDS: tuple[tuple[str, Callable[[str], Any]], ...] = (
     ("cache_ttl_days", int),
     ("request_delay_seconds", float),
     ("max_retries", int),
+    ("fixture_mode", _parse_bool),
 )
 
 
@@ -119,6 +131,15 @@ def _env_overrides() -> dict[str, Any]:
         raw = os.environ.get(f"{ENV_PREFIX}{name.upper()}")
         if raw is not None:
             overrides[name] = cast(raw)
+
+    # `FIXTURE_MODE=1` is the documented bare shorthand for this one setting,
+    # alongside the usual `FASHION_TRENDS_FIXTURE_MODE` — checked only when
+    # the prefixed form wasn't set, so the prefixed form always wins.
+    if "fixture_mode" not in overrides:
+        raw = os.environ.get("FIXTURE_MODE")
+        if raw is not None:
+            overrides["fixture_mode"] = _parse_bool(raw)
+
     return overrides
 
 
@@ -126,6 +147,7 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(add_help=False)
     for name, cast in _FIELDS:
         parser.add_argument(f"--{name.replace('_', '-')}", type=cast, default=None)
+    parser.add_argument("--offline", action="store_true", help="Alias for --fixture-mode true")
     return parser
 
 
@@ -144,6 +166,8 @@ def load_settings(argv: list[str] | None = None) -> Settings:
     cli_overrides = {
         name: value for name, _ in _FIELDS if (value := getattr(parsed, name)) is not None
     }
+    if parsed.offline:
+        cli_overrides["fixture_mode"] = True
     return replace(settings, **cli_overrides)
 
 
