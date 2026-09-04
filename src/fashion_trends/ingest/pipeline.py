@@ -11,9 +11,9 @@ shared axis, and writes two artifacts under `settings.data_processed_dir`:
   identity/provenance columns (catalog metadata plus `low_resolution`) and
   the peak columns from `fashion_trends.metrics.peaks`, which every decay
   metric is measured against, plus the decay metrics themselves. Each of
-  those — % dropped, decay rate, time-to-50%, and the lifecycle status
-  still to come — extends this same table by joining onto `trend_id`
-  rather than replacing it.
+  those — % dropped, decay rate, time-to-50%, and the lifecycle status —
+  extends this same table by joining onto `trend_id` rather than replacing
+  it.
 
 A batch is the unit of failure: pytrends fetches every keyword in a batch
 in a single request, so a `RateLimitedError`/`NoDataError`/`TransportError`
@@ -45,6 +45,7 @@ from fashion_trends.metrics.decay import (
 )
 from fashion_trends.metrics.peaks import PEAK_COLUMNS, detect_peaks_by_trend
 from fashion_trends.metrics.smoothing import preprocess_series
+from fashion_trends.metrics.status import STATUS_COLUMNS, compute_status_by_trend
 from fashion_trends.settings import Settings, write_manifest
 
 SERIES_FILENAME = "series.parquet"
@@ -192,7 +193,13 @@ def _build_series_frame(
 _IDENTITY_COLUMNS = ["trend_id", "keyword", "display_name", "category", "isolate", "low_resolution"]
 
 # The metric columns each stage contributes, in the order they are merged on.
-_METRIC_COLUMNS = [*PEAK_COLUMNS, *PCT_DROPPED_COLUMNS, *DECAY_RATE_COLUMNS, *TIME_TO_HALF_COLUMNS]
+_METRIC_COLUMNS = [
+    *PEAK_COLUMNS,
+    *PCT_DROPPED_COLUMNS,
+    *DECAY_RATE_COLUMNS,
+    *TIME_TO_HALF_COLUMNS,
+    *STATUS_COLUMNS,
+]
 
 
 def _build_metrics_frame(
@@ -222,9 +229,18 @@ def _build_metrics_frame(
     pct_dropped = compute_pct_dropped_by_trend(series, peaks, settings.smoothing_window)
     decay_rate = compute_decay_rate_by_trend(series, peaks, pct_dropped, settings.min_decay_fit_weeks)
     time_to_half = compute_time_to_half_by_trend(series, peaks, settings.half_life_sustained_weeks)
+    status = compute_status_by_trend(
+        series,
+        peaks,
+        pct_dropped,
+        settings.collapsed_pct_dropped_threshold,
+        settings.stabilized_window_weeks,
+        settings.stabilized_flat_tolerance,
+        settings.stabilized_min_retained_pct,
+    )
 
     per_trend = per_trend[_IDENTITY_COLUMNS]
-    for metric_frame in (peaks, pct_dropped, decay_rate, time_to_half):
+    for metric_frame in (peaks, pct_dropped, decay_rate, time_to_half, status):
         per_trend = per_trend.merge(metric_frame, on="trend_id", how="left")
     return per_trend[[*_IDENTITY_COLUMNS, *_METRIC_COLUMNS]]
 

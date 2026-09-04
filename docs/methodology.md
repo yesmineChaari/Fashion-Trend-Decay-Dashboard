@@ -101,6 +101,48 @@ fitted constant alone while keeping one noisy week from tilting it.
 
 See `fashion_trends.metrics.decay` for the implementation.
 
+## Lifecycle status (`status`)
+
+A plain-language label for where a trend sits in its life, so the dashboard
+can group and filter meaningfully. This is descriptive labelling of already-
+computed metrics — no ML, no training, no forecast of what a trend will do
+next.
+
+* `pre_peak` — the peak is the most recent week and the series is still
+  climbing into it. No decline to measure yet.
+* `declining` — clearly post-peak and still falling over the recent window.
+* `collapsed` — dropped at least `collapsed_pct_dropped_threshold` (default
+  70%) from peak.
+* `stabilized` — post-peak but flat over the trailing
+  `stabilized_window_weeks` (default 26) weeks, having retained at least
+  `stabilized_min_retained_pct` (default 40%) of peak. The distinction this
+  project cares most about: a trend that became a wardrobe staple, not one
+  that quietly vanished.
+* `revived` — a secondary peak was flagged during peak detection (see
+  `has_secondary_peak` above).
+* `unknown` — no peak could be found at all (an empty or all-gap series).
+  Not one of the five lifecycle stages; the same "no data" escape hatch used
+  elsewhere in this table (compare `time_to_half_status`'s `unknown`).
+
+**Rule order** (first match wins, since a trend can satisfy more than one of
+these at once): `unknown` → `pre_peak` → `revived` → `collapsed` →
+`stabilized` → `declining` (the default for any post-peak trend matching
+none of the above). `revived` is checked ahead of `collapsed`/`stabilized`
+because a trend coming back is the more informative story even when its
+current level also happens to be deep in a drop or sitting flat;
+`collapsed` is checked ahead of `stabilized` so a trend that faded to a
+residual floor and then went flat there is reported as collapsed, not as a
+plateau worth calling stability.
+
+"Flat" is the trailing window's range as a fraction of its own mean, within
+`stabilized_flat_tolerance` (default 0.15) — a fixed absolute range would
+call a small residual trend "volatile" for movements that are proportionally
+tiny. The window must be full of actual observations (no gap weeks) and the
+trend must be at least `stabilized_window_weeks` past its peak, so a trend
+that only just peaked can't read its own peak plateau as stability.
+
+See `fashion_trends.metrics.status` for the implementation.
+
 ## Time to 50% decline (`weeks_to_half`)
 
 The normalized "how fast do trends die" figure — comparable across trends

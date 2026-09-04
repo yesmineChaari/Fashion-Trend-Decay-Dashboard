@@ -56,6 +56,19 @@ class Settings:
     min_decay_fit_weeks: int = 8
     half_life_sustained_weeks: int = 2
 
+    # Lifecycle status (see `fashion_trends.metrics.status`). A trend is
+    # `collapsed` once it has dropped at least `collapsed_pct_dropped_threshold`
+    # percent from its peak. Below that, a post-peak trend flat over its
+    # trailing `stabilized_window_weeks` (relative range within
+    # `stabilized_flat_tolerance` of the window's mean) counts as `stabilized`
+    # rather than `declining` only if it also retained at least
+    # `stabilized_min_retained_pct` percent of its peak — flat *and* faded
+    # away is still a fade, not a plateau worth calling a wardrobe staple.
+    collapsed_pct_dropped_threshold: float = 70.0
+    stabilized_window_weeks: int = 26
+    stabilized_flat_tolerance: float = 0.15
+    stabilized_min_retained_pct: float = 40.0
+
     # Google Trends caps requests at 5 keywords and rescales each batch 0-100
     # relative to that batch's own maximum, so raw values are not comparable
     # across batches. Including this keyword in every batch gives a shared
@@ -120,6 +133,10 @@ class Settings:
             "pre_peak_rise_weeks": self.pre_peak_rise_weeks,
             "min_decay_fit_weeks": self.min_decay_fit_weeks,
             "half_life_sustained_weeks": self.half_life_sustained_weeks,
+            "collapsed_pct_dropped_threshold": self.collapsed_pct_dropped_threshold,
+            "stabilized_window_weeks": self.stabilized_window_weeks,
+            "stabilized_flat_tolerance": self.stabilized_flat_tolerance,
+            "stabilized_min_retained_pct": self.stabilized_min_retained_pct,
             "anchor_keyword": self.anchor_keyword,
             "max_batch_keywords": self.max_batch_keywords,
             "low_resolution_threshold": self.low_resolution_threshold,
@@ -149,6 +166,10 @@ _FIELDS: tuple[tuple[str, Callable[[str], Any]], ...] = (
     ("pre_peak_rise_weeks", int),
     ("min_decay_fit_weeks", int),
     ("half_life_sustained_weeks", int),
+    ("collapsed_pct_dropped_threshold", float),
+    ("stabilized_window_weeks", int),
+    ("stabilized_flat_tolerance", float),
+    ("stabilized_min_retained_pct", float),
     ("anchor_keyword", str),
     ("max_batch_keywords", int),
     ("low_resolution_threshold", float),

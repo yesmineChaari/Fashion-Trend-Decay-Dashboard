@@ -18,6 +18,7 @@ from fashion_trends.metrics.decay import (
     TIME_TO_HALF_COLUMNS,
 )
 from fashion_trends.metrics.peaks import PEAK_COLUMNS
+from fashion_trends.metrics.status import STATUS_COLUMNS
 from fashion_trends.settings import Settings
 
 ANCHOR = "haute couture"
@@ -111,6 +112,7 @@ def test_run_pipeline_persists_series_and_metrics(monkeypatch, tmp_path):
         *PCT_DROPPED_COLUMNS,
         *DECAY_RATE_COLUMNS,
         *TIME_TO_HALF_COLUMNS,
+        *STATUS_COLUMNS,
     }
     assert bool(metrics.loc[metrics["trend_id"] == "demure", "isolate"].iloc[0]) is True
     # Peak detection runs as part of the same pass, so every persisted trend
