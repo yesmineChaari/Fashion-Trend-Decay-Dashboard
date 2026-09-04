@@ -46,6 +46,12 @@ class Settings:
     peak_boundary_weeks: int = 4
     pre_peak_rise_weeks: int = 4
 
+    # Decay metrics (see `fashion_trends.metrics.decay`). The exponential
+    # decay fit needs a post-peak segment long enough to have a shape:
+    # below `min_decay_fit_weeks` weeks the fitted constant says more about
+    # the last few noisy weeks than about the trend, so it is left null.
+    min_decay_fit_weeks: int = 8
+
     # Google Trends caps requests at 5 keywords and rescales each batch 0-100
     # relative to that batch's own maximum, so raw values are not comparable
     # across batches. Including this keyword in every batch gives a shared
@@ -108,6 +114,7 @@ class Settings:
             "spike_peak_ratio": self.spike_peak_ratio,
             "peak_boundary_weeks": self.peak_boundary_weeks,
             "pre_peak_rise_weeks": self.pre_peak_rise_weeks,
+            "min_decay_fit_weeks": self.min_decay_fit_weeks,
             "anchor_keyword": self.anchor_keyword,
             "max_batch_keywords": self.max_batch_keywords,
             "low_resolution_threshold": self.low_resolution_threshold,
@@ -135,6 +142,7 @@ _FIELDS: tuple[tuple[str, Callable[[str], Any]], ...] = (
     ("spike_peak_ratio", float),
     ("peak_boundary_weeks", int),
     ("pre_peak_rise_weeks", int),
+    ("min_decay_fit_weeks", int),
     ("anchor_keyword", str),
     ("max_batch_keywords", int),
     ("low_resolution_threshold", float),

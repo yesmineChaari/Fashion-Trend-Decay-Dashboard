@@ -1,8 +1,13 @@
+import math
+
 import pandas as pd
 import pytest
 
 from fashion_trends.metrics.decay import (
+    DECAY_RATE_COLUMNS,
     PCT_DROPPED_COLUMNS,
+    compute_decay_rate,
+    compute_decay_rate_by_trend,
     compute_pct_dropped,
     compute_pct_dropped_by_trend,
 )
@@ -173,3 +178,217 @@ def test_compute_pct_dropped_by_trend_types_columns_even_when_every_result_is_nu
     assert result["current_window_end"].dtype == "datetime64[ns]"
     assert result["current_above_peak"].dtype == "bool"
     assert result["pct_dropped"].isna().all()
+
+
+# ---- decay rate: the linear reading ----------------------------------------------------
+
+
+def _smoothed(values, start="2026-01-04"):
+    return pd.DataFrame({"interest_smooth": values}, index=_dates(len(values), start=start))
+
+
+def _decay_rate(processed, weeks_since_peak, pct_dropped, pre_peak=False, min_fit_weeks=8):
+    return compute_decay_rate(
+        processed, processed.index[0], weeks_since_peak, pct_dropped, pre_peak, min_fit_weeks
+    )
+
+
+def _exponential(peak, k, weeks):
+    return [peak * math.exp(-k * week) for week in range(weeks)]
+
+
+def test_decay_rate_linear_spreads_the_drop_over_the_weeks_since_the_peak():
+    # 80% lost over 20 weeks is 4 percentage points of the peak per week.
+    result = _decay_rate(_smoothed([100.0] * 21), weeks_since_peak=20, pct_dropped=80.0)
+
+    assert result.decay_rate_linear == pytest.approx(4.0)
+
+
+def test_two_trends_with_the_same_drop_but_different_speeds_get_different_rates():
+    # The whole reason this metric exists: an identical "% dropped" reached
+    # over 8 weeks and over 104 weeks are not the same story.
+    fast = _decay_rate(_smoothed([100.0] * 9), weeks_since_peak=8, pct_dropped=60.0)
+    slow = _decay_rate(_smoothed([100.0] * 105), weeks_since_peak=104, pct_dropped=60.0)
+
+    assert fast.decay_rate_linear > slow.decay_rate_linear
+    assert fast.decay_rate_linear == pytest.approx(7.5)
+    assert slow.decay_rate_linear == pytest.approx(60.0 / 104)
+
+
+# ---- decay rate: the exponential fit ----------------------------------------------------
+
+
+def test_the_fit_recovers_the_constant_of_a_known_exponential_decay():
+    # A textbook exponential decay: the fit must return the k it was built
+    # with, and an R^2 of 1 for a curve that is exactly exponential.
+    values = _exponential(peak=100.0, k=0.12, weeks=30)
+    result = _decay_rate(_smoothed(values), weeks_since_peak=29, pct_dropped=90.0)
+
+    assert result.decay_rate_exp == pytest.approx(0.12, abs=1e-9)
+    assert result.decay_fit_r2 == pytest.approx(1.0)
+    assert result.decay_fit_weeks == 30
+
+
+def test_a_trend_that_dropped_then_plateaued_fits_badly_and_says_so():
+    # A cliff followed by a flat line is not an exponential. The fit still
+    # returns a constant -- the R^2 is what tells the reader not to trust a
+    # single decay number for this shape.
+    cliff_then_flat = [100.0, 40.0] + [38.0] * 18
+    plateaued = _decay_rate(_smoothed(cliff_then_flat), weeks_since_peak=19, pct_dropped=62.0)
+    clean = _decay_rate(
+        _smoothed(_exponential(peak=100.0, k=0.12, weeks=20)), weeks_since_peak=19, pct_dropped=90.0
+    )
+
+    assert plateaued.decay_fit_r2 < 0.6
+    assert clean.decay_fit_r2 > plateaued.decay_fit_r2
+
+
+def test_the_fit_ignores_gap_and_zero_weeks_without_shifting_the_weeks_after_them():
+    # A gap week and a week at zero cannot be logged, so they drop out of the
+    # fit -- but the weeks after them keep their real distance from the peak,
+    # so the recovered constant is unchanged.
+    values = _exponential(peak=100.0, k=0.1, weeks=20)
+    values[5] = float("nan")
+    values[9] = 0.0
+    result = _decay_rate(_smoothed(values), weeks_since_peak=19, pct_dropped=85.0)
+
+    assert result.decay_rate_exp == pytest.approx(0.1, abs=1e-9)
+    assert result.decay_fit_weeks == 18
+
+
+def test_a_post_peak_segment_shorter_than_the_minimum_is_not_fitted():
+    # Six weeks of decline cannot support a decay constant that would be
+    # extrapolated over years -- null is the honest answer, though the linear
+    # reading still stands.
+    result = _decay_rate(
+        _smoothed(_exponential(peak=100.0, k=0.2, weeks=6)), weeks_since_peak=5, pct_dropped=60.0
+    )
+
+    assert result.decay_rate_exp is None
+    assert result.decay_fit_r2 is None
+    assert result.decay_fit_weeks is None
+    assert result.decay_rate_linear == pytest.approx(12.0)
+
+
+def test_a_flat_post_peak_segment_fits_a_zero_decay_constant_exactly():
+    # No variance for the fit to explain, and nothing left unexplained: a
+    # trend that has not moved decays at 0 per week, and that constant
+    # describes it perfectly.
+    result = _decay_rate(_smoothed([50.0] * 12), weeks_since_peak=11, pct_dropped=0.0)
+
+    assert result.decay_rate_exp == pytest.approx(0.0, abs=1e-12)
+    assert result.decay_fit_r2 == 1.0
+
+
+def test_the_fit_starts_at_the_peak_week_not_at_the_start_of_the_series():
+    # The weeks before the peak are a rise, not a decay. Including them would
+    # flatten the fitted constant, so the fit must ignore them entirely.
+    rise = [10.0, 30.0, 60.0]
+    decay = _exponential(peak=100.0, k=0.15, weeks=20)
+    processed = _smoothed(rise + decay)
+    peak_date = processed.index[len(rise)]
+
+    result = compute_decay_rate(processed, peak_date, 19, 90.0, False, 8)
+
+    assert result.decay_rate_exp == pytest.approx(0.15, abs=1e-9)
+    assert result.decay_fit_weeks == 20
+
+
+# ---- decay rate: null cases ----------------------------------------------------
+
+
+def test_decay_rate_is_null_for_a_pre_peak_trend():
+    result = _decay_rate(
+        _smoothed([10.0, 20.0, 30.0] * 4), weeks_since_peak=0, pct_dropped=None, pre_peak=True
+    )
+
+    assert result.decay_rate_linear is None
+    assert result.decay_rate_exp is None
+    assert result.decay_fit_r2 is None
+
+
+def test_decay_rate_linear_is_null_when_the_peak_is_the_most_recent_week():
+    # Nothing to divide by: no time has passed for the drop to spread over.
+    # The exponential fit has no post-peak segment to work with either.
+    processed = _smoothed([100.0] * 12)
+    result = compute_decay_rate(processed, processed.index[-1], 0, 0.0, False, 8)
+
+    assert result.decay_rate_linear is None
+    assert result.decay_rate_exp is None
+
+
+def test_decay_rate_linear_is_null_when_pct_dropped_is():
+    # No peak was found, or the peak was zero -- either way there is no drop
+    # to spread over the weeks. The fit is independent and still runs.
+    result = _decay_rate(
+        _smoothed(_exponential(peak=100.0, k=0.1, weeks=20)), weeks_since_peak=19, pct_dropped=None
+    )
+
+    assert result.decay_rate_linear is None
+    assert result.decay_rate_exp == pytest.approx(0.1, abs=1e-9)
+
+
+def test_decay_rate_is_null_when_no_peak_date_was_found():
+    result = compute_decay_rate(_smoothed([float("nan")] * 12), None, None, None, False, 8)
+
+    assert result.decay_rate_linear is None
+    assert result.decay_rate_exp is None
+
+
+# ---- compute_decay_rate_by_trend ----------------------------------------------------
+
+
+def _smoothed_series_rows(trend_id, values, start="2026-01-04"):
+    return pd.DataFrame(
+        {"date": _dates(len(values), start=start), "trend_id": trend_id, "interest_smooth": values}
+    )
+
+
+def _decay_peak_row(trend_id, peak_date, weeks_since_peak, pre_peak):
+    return {
+        "trend_id": trend_id,
+        "peak_date": peak_date,
+        "weeks_since_peak": weeks_since_peak,
+        "pre_peak": pre_peak,
+    }
+
+
+def test_compute_decay_rate_by_trend_returns_one_row_per_trend():
+    fading = _exponential(peak=100.0, k=0.1, weeks=20)
+    rising = [float(week) for week in range(1, 21)]
+    series = pd.concat(
+        [_smoothed_series_rows("mob", fading), _smoothed_series_rows("demure", rising)],
+        ignore_index=True,
+    )
+    dates = _dates(20)
+    peaks = pd.DataFrame(
+        [
+            _decay_peak_row("mob", dates[0], 19, False),
+            _decay_peak_row("demure", dates[-1], 0, True),
+        ]
+    )
+    pct_dropped = pd.DataFrame(
+        [{"trend_id": "mob", "pct_dropped": 85.0}, {"trend_id": "demure", "pct_dropped": None}]
+    )
+
+    result = compute_decay_rate_by_trend(series, peaks, pct_dropped, min_fit_weeks=8)
+
+    assert list(result.columns) == ["trend_id", *DECAY_RATE_COLUMNS]
+    by_id = result.set_index("trend_id")
+    assert by_id.loc["mob", "decay_rate_exp"] == pytest.approx(0.1, abs=1e-9)
+    assert by_id.loc["mob", "decay_rate_linear"] == pytest.approx(85.0 / 19)
+    assert pd.isna(by_id.loc["demure", "decay_rate_linear"])
+    assert pd.isna(by_id.loc["demure", "decay_rate_exp"])
+
+
+def test_compute_decay_rate_by_trend_types_columns_even_when_every_result_is_null():
+    series = _smoothed_series_rows("mob", [float("nan")] * 3)
+    peaks = pd.DataFrame([_decay_peak_row("mob", None, None, False)])
+    pct_dropped = pd.DataFrame([{"trend_id": "mob", "pct_dropped": None}])
+
+    result = compute_decay_rate_by_trend(series, peaks, pct_dropped, min_fit_weeks=8)
+
+    assert result["decay_rate_linear"].dtype == "float64"
+    assert result["decay_fit_r2"].dtype == "float64"
+    assert result["decay_fit_weeks"].dtype == "Int64"
+    assert result["decay_rate_exp"].isna().all()

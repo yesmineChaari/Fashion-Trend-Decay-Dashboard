@@ -10,9 +10,10 @@ shared axis, and writes two artifacts under `settings.data_processed_dir`:
 * `metrics.parquet` — one row per successfully-collected trend: the
   identity/provenance columns (catalog metadata plus `low_resolution`) and
   the peak columns from `fashion_trends.metrics.peaks`, which every decay
-  metric is measured against. The decay metrics themselves — % dropped,
-  decay rate, time-to-50%, lifecycle status — extend this same table by
-  joining onto `trend_id` rather than replacing it.
+  metric is measured against, plus the decay metrics themselves. Each of
+  those — % dropped, decay rate, and the time-to-50% and lifecycle status
+  still to come — extends this same table by joining onto `trend_id`
+  rather than replacing it.
 
 A batch is the unit of failure: pytrends fetches every keyword in a batch
 in a single request, so a `RateLimitedError`/`NoDataError`/`TransportError`
@@ -34,7 +35,12 @@ from fashion_trends.ingest.batching import build_batches, is_low_resolution, res
 from fashion_trends.ingest.cache import fetch_batch, write_raw_manifest
 from fashion_trends.ingest.pytrends_client import TrendsClientError
 from fashion_trends.keywords import Trend, load_trends
-from fashion_trends.metrics.decay import PCT_DROPPED_COLUMNS, compute_pct_dropped_by_trend
+from fashion_trends.metrics.decay import (
+    DECAY_RATE_COLUMNS,
+    PCT_DROPPED_COLUMNS,
+    compute_decay_rate_by_trend,
+    compute_pct_dropped_by_trend,
+)
 from fashion_trends.metrics.peaks import PEAK_COLUMNS, detect_peaks_by_trend
 from fashion_trends.metrics.smoothing import preprocess_series
 from fashion_trends.settings import Settings, write_manifest
@@ -190,7 +196,9 @@ def _build_metrics_frame(
     settings: Settings,
 ) -> pd.DataFrame:
     if series.empty:
-        return pd.DataFrame(columns=[*_IDENTITY_COLUMNS, *PEAK_COLUMNS, *PCT_DROPPED_COLUMNS])
+        return pd.DataFrame(
+            columns=[*_IDENTITY_COLUMNS, *PEAK_COLUMNS, *PCT_DROPPED_COLUMNS, *DECAY_RATE_COLUMNS]
+        )
 
     per_trend = series.groupby("trend_id", as_index=False)["low_resolution"].any()
     per_trend["keyword"] = per_trend["trend_id"].map(lambda tid: _trend_by_id(trends_by_keyword, tid).keyword)
@@ -209,9 +217,11 @@ def _build_metrics_frame(
         settings.pre_peak_rise_weeks,
     )
     pct_dropped = compute_pct_dropped_by_trend(series, peaks, settings.smoothing_window)
+    decay_rate = compute_decay_rate_by_trend(series, peaks, pct_dropped, settings.min_decay_fit_weeks)
     per_trend = per_trend[_IDENTITY_COLUMNS].merge(peaks, on="trend_id", how="left")
     per_trend = per_trend.merge(pct_dropped, on="trend_id", how="left")
-    return per_trend[[*_IDENTITY_COLUMNS, *PEAK_COLUMNS, *PCT_DROPPED_COLUMNS]]
+    per_trend = per_trend.merge(decay_rate, on="trend_id", how="left")
+    return per_trend[[*_IDENTITY_COLUMNS, *PEAK_COLUMNS, *PCT_DROPPED_COLUMNS, *DECAY_RATE_COLUMNS]]
 
 
 def _trend_by_id(trends_by_keyword: dict[str, Trend], trend_id: str) -> Trend:
