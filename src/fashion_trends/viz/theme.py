@@ -58,6 +58,23 @@ CATEGORY_MARKERS: dict[str, str] = {
 }
 FALLBACK_MARKER = "x"
 
+# A second Okabe-Ito-derived palette, kept separate from `CATEGORY_COLORS`
+# because a chart that colours by lifecycle status (see
+# `fashion_trends.viz.rankings`) never also colours by category in the same
+# figure — reusing the category hues for a different meaning would only
+# invite a reader to conflate the two. Keyed to
+# `fashion_trends.metrics.status`'s `STATUS_*` constants; `status_style`
+# falls back to `FALLBACK_STATUS_COLOR` for anything outside that set.
+STATUS_COLORS: dict[str, str] = {
+    "collapsed": "#D55E00",  # vermillion
+    "declining": "#0072B2",  # blue
+    "stabilized": "#009E73",  # bluish green
+    "revived": "#E69F00",  # orange
+    "pre_peak": "#CCCCCC",  # light grey
+    "unknown": "#999999",  # mid grey
+}
+FALLBACK_STATUS_COLOR = "#000000"
+
 FIGURE_SIZE = (10.0, 6.0)
 FIGURE_DPI = 150
 FONT_FAMILY = "sans-serif"
@@ -111,6 +128,15 @@ def category_style(category: str) -> dict[str, str]:
         "linestyle": CATEGORY_LINESTYLES.get(category, FALLBACK_LINESTYLE),
         "marker": CATEGORY_MARKERS.get(category, FALLBACK_MARKER),
     }
+
+
+def status_style(status: str) -> str:
+    """Colour for one `fashion_trends.metrics.status` lifecycle label.
+
+    Falls back to `FALLBACK_STATUS_COLOR` for a status outside `STATUS_COLORS`
+    rather than raising — see `category_style`'s docstring for why.
+    """
+    return STATUS_COLORS.get(status, FALLBACK_STATUS_COLOR)
 
 
 def _format_pull_date(pull_date: Any) -> str:
