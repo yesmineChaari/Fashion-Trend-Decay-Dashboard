@@ -209,7 +209,9 @@ PEAK_COLUMNS = (
 
 # Explicit dtypes so a column that happens to be all-null in one run still
 # round-trips through parquet as the type the rest of the pipeline expects.
-_PEAK_DTYPES = {
+# Public: `fashion_trends.metrics.schema` reuses this as the single source of
+# truth for these columns' dtypes in the canonical metrics table.
+PEAK_DTYPES = {
     "peak_date": "datetime64[ns]",
     "peak_value": "float64",
     "peak_value_raw": "float64",
@@ -252,4 +254,4 @@ def detect_peaks_by_trend(
         rows.append({"trend_id": trend_id, **result.to_row()})
 
     frame = pd.DataFrame(rows, columns=["trend_id", *PEAK_COLUMNS])
-    return frame.astype(_PEAK_DTYPES)
+    return frame.astype(PEAK_DTYPES)

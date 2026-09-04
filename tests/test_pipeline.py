@@ -12,13 +12,7 @@ from fashion_trends.ingest.pipeline import (
 )
 from fashion_trends.ingest.pytrends_client import NoDataError, RateLimitedError
 from fashion_trends.keywords import Trend
-from fashion_trends.metrics.decay import (
-    DECAY_RATE_COLUMNS,
-    PCT_DROPPED_COLUMNS,
-    TIME_TO_HALF_COLUMNS,
-)
-from fashion_trends.metrics.peaks import PEAK_COLUMNS
-from fashion_trends.metrics.status import STATUS_COLUMNS
+from fashion_trends.metrics.schema import METRICS_COLUMNS
 from fashion_trends.settings import Settings
 
 ANCHOR = "haute couture"
@@ -101,19 +95,7 @@ def test_run_pipeline_persists_series_and_metrics(monkeypatch, tmp_path):
 
     metrics = pd.read_parquet(result.metrics_path)
     assert set(metrics["trend_id"]) == {"mob", "demure"}
-    assert set(metrics.columns) == {
-        "trend_id",
-        "keyword",
-        "display_name",
-        "category",
-        "isolate",
-        "low_resolution",
-        *PEAK_COLUMNS,
-        *PCT_DROPPED_COLUMNS,
-        *DECAY_RATE_COLUMNS,
-        *TIME_TO_HALF_COLUMNS,
-        *STATUS_COLUMNS,
-    }
+    assert list(metrics.columns) == list(METRICS_COLUMNS)
     assert bool(metrics.loc[metrics["trend_id"] == "demure", "isolate"].iloc[0]) is True
     # Peak detection runs as part of the same pass, so every persisted trend
     # carries the peak its decay metrics will be measured against.
@@ -128,6 +110,14 @@ def test_run_pipeline_persists_series_and_metrics(monkeypatch, tmp_path):
     # Neither trend drops below half its own (identically smoothed) peak, so
     # both are reported as still above half rather than as a failed metric.
     assert (metrics["time_to_half_status"] == "still_above_half").all()
+    # Both trends are one week past an identically-smoothed peak with no drop
+    # and far short of the stabilized window, so the default post-peak label
+    # applies to both.
+    assert (metrics["status"] == "declining").all()
+    # Provenance ties every row back to the settings that produced it.
+    assert (metrics["timeframe"] == settings.timeframe).all()
+    assert (metrics["geo"] == settings.geo).all()
+    assert metrics["data_pull_date"].notna().all()
 
 
 def test_run_pipeline_tolerates_partial_batch_failure(monkeypatch, tmp_path):

@@ -133,7 +133,9 @@ PCT_DROPPED_COLUMNS = (
 
 # Explicit dtypes so a column that happens to be all-null in one run still
 # round-trips through parquet as the type the rest of the pipeline expects.
-_PCT_DROPPED_DTYPES = {
+# Public: `fashion_trends.metrics.schema` reuses this as the single source of
+# truth for these columns' dtypes in the canonical metrics table.
+PCT_DROPPED_DTYPES = {
     "pct_dropped": "float64",
     "current_value": "float64",
     "current_window_end": "datetime64[ns]",
@@ -166,7 +168,7 @@ def compute_pct_dropped_by_trend(
         rows.append({"trend_id": trend_id, **result.to_row()})
 
     frame = pd.DataFrame(rows, columns=["trend_id", *PCT_DROPPED_COLUMNS])
-    return frame.astype(_PCT_DROPPED_DTYPES)
+    return frame.astype(PCT_DROPPED_DTYPES)
 
 
 @dataclass(frozen=True)
@@ -298,7 +300,9 @@ DECAY_RATE_COLUMNS = (
 
 # Explicit dtypes so a column that happens to be all-null in one run still
 # round-trips through parquet as the type the rest of the pipeline expects.
-_DECAY_RATE_DTYPES = {
+# Public: `fashion_trends.metrics.schema` reuses this as the single source of
+# truth for these columns' dtypes in the canonical metrics table.
+DECAY_RATE_DTYPES = {
     "decay_rate_linear": "float64",
     "decay_rate_exp": "float64",
     "decay_fit_r2": "float64",
@@ -340,7 +344,7 @@ def compute_decay_rate_by_trend(
         rows.append({"trend_id": trend_id, **result.to_row()})
 
     frame = pd.DataFrame(rows, columns=["trend_id", *DECAY_RATE_COLUMNS])
-    return frame.astype(_DECAY_RATE_DTYPES)
+    return frame.astype(DECAY_RATE_DTYPES)
 
 
 # Values `time_to_half_status` takes, so callers (charts, dashboard filters)
@@ -449,7 +453,9 @@ TIME_TO_HALF_COLUMNS = (
 
 # Explicit dtypes so a column that happens to be all-null in one run still
 # round-trips through parquet as the type the rest of the pipeline expects.
-_TIME_TO_HALF_DTYPES = {
+# Public: `fashion_trends.metrics.schema` reuses this as the single source of
+# truth for these columns' dtypes in the canonical metrics table.
+TIME_TO_HALF_DTYPES = {
     "weeks_to_half": "Int64",
     "half_life_date": "datetime64[ns]",
     "time_to_half_status": "string",
@@ -486,4 +492,4 @@ def compute_time_to_half_by_trend(
         rows.append({"trend_id": trend_id, **result.to_row()})
 
     frame = pd.DataFrame(rows, columns=["trend_id", *TIME_TO_HALF_COLUMNS])
-    return frame.astype(_TIME_TO_HALF_DTYPES)
+    return frame.astype(TIME_TO_HALF_DTYPES)

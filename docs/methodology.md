@@ -3,6 +3,55 @@
 How each metric in `metrics.parquet` is defined, so a reader comparing this
 project's figures against any other source knows exactly what they mean.
 
+## The `metrics.parquet` schema
+
+One row per trend. `fashion_trends.metrics.compute_all` is the single entry
+point that produces it — the pipeline and any future live-lookup (the
+dashboard's live search) both call it, so there is exactly one place these
+numbers are computed. `fashion_trends.metrics.schema.validate_metrics_schema`
+checks every column and dtype below against what actually came back before a
+frame is written or returned, so a run fails loudly rather than silently
+persisting a table the dashboard or charts can't read correctly.
+
+Nullable types are used throughout on purpose: a null metric is a meaningful
+state (no peak yet, a fit too short to trust, a trend that never crossed half
+its peak), never coerced to `0` — a `pct_dropped` of `0` and an unknown
+`pct_dropped` mean opposite things.
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| `trend_id` | string | Catalog id (`config/trends.yaml`). |
+| `keyword` | string | The literal Google Trends search term. |
+| `display_name` | string | Human-readable label for charts/dashboard. |
+| `category` | string | One of `config/trends.yaml`'s `VALID_CATEGORIES`. |
+| `isolate` | bool | Whether the trend was pulled alone with the anchor (see `fashion_trends.settings.Settings.anchor_keyword`). |
+| `low_resolution` | bool | Rescaled peak below `low_resolution_threshold` — shape not trustworthy for decay metrics. |
+| `peak_date` | datetime | Date of the smoothed-series peak. |
+| `peak_value` | float | Smoothed interest (0-100 scale) at the peak. |
+| `peak_value_raw` | float | Unsmoothed interest at the peak week. |
+| `weeks_since_peak` | int | Weeks from peak to the end of the pulled window. |
+| `peak_is_spike` | bool | Peak's height rests on a single week, not a hump. |
+| `has_secondary_peak` | bool | A second hump reaching `secondary_peak_ratio` of the peak was found. |
+| `secondary_peak_date` | datetime | Date of that secondary hump, if any. |
+| `secondary_peak_value` | float | Smoothed interest at the secondary hump, if any. |
+| `peak_at_boundary` | bool | Peak sits within `peak_boundary_weeks` of either end of the window — the real peak may be outside it. |
+| `pre_peak` | bool | Peak is the most recent week and still climbing. |
+| `pct_dropped` | float | % dropped from peak, clamped to `[0, 100]`. |
+| `current_value` | float | Trailing mean of raw interest behind `pct_dropped`. |
+| `current_window_end` | datetime | Last week folded into `current_value`. |
+| `current_above_peak` | bool | Current level reads above peak — the peak was misdetected. |
+| `decay_rate_linear` | float | Percentage points of peak lost per week. |
+| `decay_rate_exp` | float | Weekly exponential decay constant `k`. |
+| `decay_fit_r2` | float | Fraction of variance the exponential fit explains. |
+| `decay_fit_weeks` | int | Weeks of post-peak data behind the fit. |
+| `weeks_to_half` | int | Weeks from peak until a sustained drop below half of it. |
+| `half_life_date` | datetime | Date of that sustained crossing. |
+| `time_to_half_status` | string | `crossed` / `still_above_half` / `pre_peak` / `unknown` — see below. |
+| `status` | string | `pre_peak` / `declining` / `collapsed` / `stabilized` / `revived` / `unknown` — see below. |
+| `data_pull_date` | datetime | When the interest data behind this row was current. |
+| `timeframe` | string | The Google Trends `timeframe` the pull used (e.g. `today 5-y`). |
+| `geo` | string | The Google Trends `geo` the pull used (e.g. `US`). |
+
 ## % dropped since peak (`pct_dropped`)
 
 ```
