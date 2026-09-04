@@ -12,7 +12,11 @@ from fashion_trends.ingest.pipeline import (
 )
 from fashion_trends.ingest.pytrends_client import NoDataError, RateLimitedError
 from fashion_trends.keywords import Trend
-from fashion_trends.metrics.decay import DECAY_RATE_COLUMNS, PCT_DROPPED_COLUMNS
+from fashion_trends.metrics.decay import (
+    DECAY_RATE_COLUMNS,
+    PCT_DROPPED_COLUMNS,
+    TIME_TO_HALF_COLUMNS,
+)
 from fashion_trends.metrics.peaks import PEAK_COLUMNS
 from fashion_trends.settings import Settings
 
@@ -106,6 +110,7 @@ def test_run_pipeline_persists_series_and_metrics(monkeypatch, tmp_path):
         *PEAK_COLUMNS,
         *PCT_DROPPED_COLUMNS,
         *DECAY_RATE_COLUMNS,
+        *TIME_TO_HALF_COLUMNS,
     }
     assert bool(metrics.loc[metrics["trend_id"] == "demure", "isolate"].iloc[0]) is True
     # Peak detection runs as part of the same pass, so every persisted trend
@@ -118,6 +123,9 @@ def test_run_pipeline_persists_series_and_metrics(monkeypatch, tmp_path):
     # Two weeks is far too short a post-peak segment to fit a decay constant
     # to, so the fit columns come back null rather than extrapolating one.
     assert metrics["decay_rate_exp"].isna().all()
+    # Neither trend drops below half its own (identically smoothed) peak, so
+    # both are reported as still above half rather than as a failed metric.
+    assert (metrics["time_to_half_status"] == "still_above_half").all()
 
 
 def test_run_pipeline_tolerates_partial_batch_failure(monkeypatch, tmp_path):

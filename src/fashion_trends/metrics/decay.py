@@ -1,10 +1,13 @@
 """Measure how far a trend has fallen from its own peak, and how fast.
 
-Two metrics live here, and they answer different questions about the same
+Three metrics live here, and they answer different questions about the same
 descent. `compute_pct_dropped` says *how far* a trend has fallen;
 `compute_decay_rate` says *how quickly* it got there — a trend that
 collapsed in eight weeks and one that faded gently over two years can show
-the same "% dropped", which is exactly why the second metric exists.
+the same "% dropped", which is exactly why the second metric exists; and
+`compute_time_to_half` says how long the trend took to lose half its peak,
+the one figure here that is comparable across trends regardless of how
+popular any of them ever was.
 
 The headline percentage has to survive the two ways a peak-relative
 percentage lies:
@@ -29,6 +32,13 @@ is reported alongside it, together with its R². That R² is the point: a
 trend that fell off a cliff and then plateaued fits an exponential badly,
 and a reader deciding whether to trust a single decay number for that trend
 should be able to see so rather than having to infer it.
+
+The half-life turns on what counts as having crossed. A single week dipping
+under half the peak is noise, not the moment a trend died, so a crossing
+only counts once the series *stays* below the threshold. And a trend that
+never crossed at all is a finding rather than a hole in the data — a trend
+with staying power — so it is reported as its own status rather than as an
+unexplained null.
 """
 
 from __future__ import annotations
@@ -331,3 +341,149 @@ def compute_decay_rate_by_trend(
 
     frame = pd.DataFrame(rows, columns=["trend_id", *DECAY_RATE_COLUMNS])
     return frame.astype(_DECAY_RATE_DTYPES)
+
+
+# Values `time_to_half_status` takes, so callers (charts, dashboard filters)
+# match on a name rather than on a bare string literal.
+HALF_LIFE_CROSSED = "crossed"
+HALF_LIFE_STILL_ABOVE = "still_above_half"
+HALF_LIFE_PRE_PEAK = "pre_peak"
+HALF_LIFE_UNKNOWN = "unknown"
+
+
+@dataclass(frozen=True)
+class TimeToHalfResult:
+    """How long one trend took to lose half its peak, and whether it ever did.
+
+    `weeks_to_half` is `None` in three different situations, which is why
+    `time_to_half_status` exists alongside it: the trend genuinely never
+    dropped below half its peak (`still_above_half`), it has no decay to
+    measure yet (`pre_peak`), or the metric could not be computed at all —
+    no peak, a zero peak, or no usable weeks (`unknown`). Only the last is
+    missing data; the first is a real result about a trend with staying
+    power, and a reader must be able to tell them apart.
+    """
+
+    weeks_to_half: int | None = None
+    half_life_date: pd.Timestamp | None = None
+    time_to_half_status: str = HALF_LIFE_UNKNOWN
+
+    def to_row(self) -> dict[str, Any]:
+        """A flat dict of this result, one key per `metrics.parquet` column."""
+        return asdict(self)
+
+
+def _first_sustained_crossing(below: pd.Series, min_weeks: int) -> int | None:
+    """Position in `below` where a run of at least `min_weeks` `True` starts.
+
+    A lone week under the threshold is noise — the trend dipped and came
+    back — so a crossing only counts once the series stays below for
+    `min_weeks` consecutive weeks. Gap weeks arrive as `False` and so break
+    a run, which is the conservative reading: a hole in the data is not
+    evidence the trend stayed down through it.
+    """
+    run_start: int | None = None
+    for position, flag in enumerate(below.to_numpy()):
+        if not flag:
+            run_start = None
+            continue
+        if run_start is None:
+            run_start = position
+        if position - run_start + 1 >= min_weeks:
+            return run_start
+    return None
+
+
+def compute_time_to_half(
+    processed: pd.DataFrame,
+    peak_date: pd.Timestamp | None,
+    peak_value: float | None,
+    pre_peak: bool,
+    sustained_weeks: int,
+) -> TimeToHalfResult:
+    """Weeks from one trend's peak until it had lost half of it.
+
+    `processed` is a frame indexed by date with an `interest_smooth` column —
+    the shape `fashion_trends.metrics.smoothing.preprocess_series` returns.
+    `peak_date`, `peak_value`, and `pre_peak` come from that trend's
+    `fashion_trends.metrics.peaks.PeakResult`.
+
+    The crossing is the first week after the peak where the smoothed series
+    drops below `0.5 * peak_value` *and stays there* for `sustained_weeks`
+    consecutive weeks; `weeks_to_half` counts weeks from the peak to that
+    first week, and `half_life_date` records its date for the detail view.
+    Reading the crossing off the smoothed series, and requiring it to hold,
+    are two halves of the same defence: a single noisy week that ducks under
+    the threshold and recovers is not the week a trend halved.
+
+    `time_to_half_status` distinguishes the three ways `weeks_to_half` can be
+    `None` — see `TimeToHalfResult`.
+    """
+    if pre_peak:
+        return TimeToHalfResult(time_to_half_status=HALF_LIFE_PRE_PEAK)
+    if peak_date is None or not peak_value or peak_date not in processed.index:
+        return TimeToHalfResult(time_to_half_status=HALF_LIFE_UNKNOWN)
+
+    # From the peak week onward, so position is weeks since peak: the series
+    # sits on a complete weekly index, and a gap week holds its slot rather
+    # than pulling the weeks after it closer to the peak.
+    segment = processed["interest_smooth"].loc[peak_date:]
+    below = (segment < 0.5 * peak_value).fillna(False)
+
+    crossing = _first_sustained_crossing(below, sustained_weeks)
+    if crossing is None:
+        return TimeToHalfResult(time_to_half_status=HALF_LIFE_STILL_ABOVE)
+
+    return TimeToHalfResult(
+        weeks_to_half=int(crossing),
+        half_life_date=segment.index[crossing],
+        time_to_half_status=HALF_LIFE_CROSSED,
+    )
+
+
+TIME_TO_HALF_COLUMNS = (
+    "weeks_to_half",
+    "half_life_date",
+    "time_to_half_status",
+)
+
+# Explicit dtypes so a column that happens to be all-null in one run still
+# round-trips through parquet as the type the rest of the pipeline expects.
+_TIME_TO_HALF_DTYPES = {
+    "weeks_to_half": "Int64",
+    "half_life_date": "datetime64[ns]",
+    "time_to_half_status": "string",
+}
+
+
+def compute_time_to_half_by_trend(
+    series: pd.DataFrame,
+    peaks: pd.DataFrame,
+    sustained_weeks: int,
+) -> pd.DataFrame:
+    """Run `compute_time_to_half` over every trend in a long-format series frame.
+
+    `series` has `series.parquet`'s shape — one row per (trend, week), with
+    `date`, `trend_id`, and `interest_smooth` columns. `peaks` is the frame
+    returned by `fashion_trends.metrics.peaks.detect_peaks_by_trend` (one row
+    per `trend_id`, carrying `peak_date`, `peak_value`, and `pre_peak` among
+    `PEAK_COLUMNS`). Returns one row per `trend_id` carrying
+    `TIME_TO_HALF_COLUMNS`, ready to merge onto the metrics table.
+    """
+    peaks_by_id = peaks.set_index("trend_id")
+
+    rows = []
+    for trend_id, group in series.groupby("trend_id", sort=False):
+        processed = group.set_index("date")[["interest_smooth"]].sort_index()
+        peak_row = peaks_by_id.loc[trend_id]
+        result = compute_time_to_half(
+            processed,
+            None if pd.isna(peak_row["peak_date"]) else peak_row["peak_date"],
+            None if pd.isna(peak_row["peak_value"]) else float(peak_row["peak_value"]),
+            bool(peak_row["pre_peak"]),
+            sustained_weeks,
+        )
+        rows.append({"trend_id": trend_id, **result.to_row()})
+
+    frame = pd.DataFrame(rows, columns=["trend_id", *TIME_TO_HALF_COLUMNS])
+    return frame.astype(_TIME_TO_HALF_DTYPES)

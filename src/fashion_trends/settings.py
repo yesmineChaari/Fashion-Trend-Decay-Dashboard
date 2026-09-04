@@ -50,7 +50,11 @@ class Settings:
     # decay fit needs a post-peak segment long enough to have a shape:
     # below `min_decay_fit_weeks` weeks the fitted constant says more about
     # the last few noisy weeks than about the trend, so it is left null.
+    # `half_life_sustained_weeks` is how many consecutive weeks a trend must
+    # stay below half its peak for the crossing to count: one week under the
+    # line is a dip, not the week the trend halved.
     min_decay_fit_weeks: int = 8
+    half_life_sustained_weeks: int = 2
 
     # Google Trends caps requests at 5 keywords and rescales each batch 0-100
     # relative to that batch's own maximum, so raw values are not comparable
@@ -115,6 +119,7 @@ class Settings:
             "peak_boundary_weeks": self.peak_boundary_weeks,
             "pre_peak_rise_weeks": self.pre_peak_rise_weeks,
             "min_decay_fit_weeks": self.min_decay_fit_weeks,
+            "half_life_sustained_weeks": self.half_life_sustained_weeks,
             "anchor_keyword": self.anchor_keyword,
             "max_batch_keywords": self.max_batch_keywords,
             "low_resolution_threshold": self.low_resolution_threshold,
@@ -143,6 +148,7 @@ _FIELDS: tuple[tuple[str, Callable[[str], Any]], ...] = (
     ("peak_boundary_weeks", int),
     ("pre_peak_rise_weeks", int),
     ("min_decay_fit_weeks", int),
+    ("half_life_sustained_weeks", int),
     ("anchor_keyword", str),
     ("max_batch_keywords", int),
     ("low_resolution_threshold", float),

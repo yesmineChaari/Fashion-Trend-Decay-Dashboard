@@ -100,3 +100,42 @@ fitted constant alone while keeping one noisy week from tilting it.
   weekly index, dropping a week does not shift the weeks after it.
 
 See `fashion_trends.metrics.decay` for the implementation.
+
+## Time to 50% decline (`weeks_to_half`)
+
+The normalized "how fast do trends die" figure — comparable across trends
+regardless of how popular any of them ever was, because each is measured
+against its own peak.
+
+```
+weeks_to_half = first_week_after_peak_where(interest_smooth < 0.5 * peak_value) - peak_week
+```
+
+`half_life_date` records the date of that week for the detail view.
+
+The crossing is read off the **smoothed** series, and it only counts once
+the series *stays* below the threshold for `half_life_sustained_weeks`
+(default 2) consecutive weeks. Those two rules are halves of the same
+defence: a single noisy week that ducks under half the peak and recovers
+the week after is not the week a trend halved, and treating it as one would
+report a trend as dead months before it was. A gap week breaks a run rather
+than counting as still-below — a hole in the data is not evidence the trend
+stayed down through it.
+
+### The three ways this metric is null
+
+`weeks_to_half` is `None` in three unrelated situations, so
+`time_to_half_status` names which one applies:
+
+* `crossed` — a genuine crossing was found; `weeks_to_half` is set.
+* `still_above_half` — the trend has never dropped below half its peak.
+  **This is a result, not missing data**: a trend with staying power. It
+  must be presented as such rather than hidden as a row that failed to
+  compute.
+* `pre_peak` — the trend is still climbing into its most recent week, with
+  no decline to measure yet.
+* `unknown` — the metric could not be computed at all: no peak was found,
+  the peak was `0`, or there were no usable weeks. This is the only one of
+  the four that means missing data.
+
+See `fashion_trends.metrics.decay` for the implementation.
