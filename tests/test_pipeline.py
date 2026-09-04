@@ -12,6 +12,7 @@ from fashion_trends.ingest.pipeline import (
 )
 from fashion_trends.ingest.pytrends_client import NoDataError, RateLimitedError
 from fashion_trends.keywords import Trend
+from fashion_trends.metrics.decay import PCT_DROPPED_COLUMNS
 from fashion_trends.metrics.peaks import PEAK_COLUMNS
 from fashion_trends.settings import Settings
 
@@ -103,11 +104,16 @@ def test_run_pipeline_persists_series_and_metrics(monkeypatch, tmp_path):
         "isolate",
         "low_resolution",
         *PEAK_COLUMNS,
+        *PCT_DROPPED_COLUMNS,
     }
     assert bool(metrics.loc[metrics["trend_id"] == "demure", "isolate"].iloc[0]) is True
     # Peak detection runs as part of the same pass, so every persisted trend
     # carries the peak its decay metrics will be measured against.
     assert metrics["peak_date"].notna().all()
+    # With only two pulled weeks, a centred 4-week smoothing window averages
+    # both into an identical value for each trend — the "peak" and "current"
+    # windows land on the same number, so % dropped is a deterministic 0.
+    assert (metrics["pct_dropped"] == 0.0).all()
 
 
 def test_run_pipeline_tolerates_partial_batch_failure(monkeypatch, tmp_path):

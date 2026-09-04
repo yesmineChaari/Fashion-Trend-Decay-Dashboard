@@ -34,6 +34,7 @@ from fashion_trends.ingest.batching import build_batches, is_low_resolution, res
 from fashion_trends.ingest.cache import fetch_batch, write_raw_manifest
 from fashion_trends.ingest.pytrends_client import TrendsClientError
 from fashion_trends.keywords import Trend, load_trends
+from fashion_trends.metrics.decay import PCT_DROPPED_COLUMNS, compute_pct_dropped_by_trend
 from fashion_trends.metrics.peaks import PEAK_COLUMNS, detect_peaks_by_trend
 from fashion_trends.metrics.smoothing import preprocess_series
 from fashion_trends.settings import Settings, write_manifest
@@ -189,7 +190,7 @@ def _build_metrics_frame(
     settings: Settings,
 ) -> pd.DataFrame:
     if series.empty:
-        return pd.DataFrame(columns=[*_IDENTITY_COLUMNS, *PEAK_COLUMNS])
+        return pd.DataFrame(columns=[*_IDENTITY_COLUMNS, *PEAK_COLUMNS, *PCT_DROPPED_COLUMNS])
 
     per_trend = series.groupby("trend_id", as_index=False)["low_resolution"].any()
     per_trend["keyword"] = per_trend["trend_id"].map(lambda tid: _trend_by_id(trends_by_keyword, tid).keyword)
@@ -207,8 +208,10 @@ def _build_metrics_frame(
         settings.peak_boundary_weeks,
         settings.pre_peak_rise_weeks,
     )
+    pct_dropped = compute_pct_dropped_by_trend(series, peaks, settings.smoothing_window)
     per_trend = per_trend[_IDENTITY_COLUMNS].merge(peaks, on="trend_id", how="left")
-    return per_trend[[*_IDENTITY_COLUMNS, *PEAK_COLUMNS]]
+    per_trend = per_trend.merge(pct_dropped, on="trend_id", how="left")
+    return per_trend[[*_IDENTITY_COLUMNS, *PEAK_COLUMNS, *PCT_DROPPED_COLUMNS]]
 
 
 def _trend_by_id(trends_by_keyword: dict[str, Trend], trend_id: str) -> Trend:
