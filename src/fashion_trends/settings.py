@@ -31,6 +31,21 @@ class Settings:
 
     smoothing_window: int = 4
 
+    # Peak qualification (see `fashion_trends.metrics.peaks`). A trend whose
+    # series climbs back to `secondary_peak_ratio` of its peak, after having
+    # dropped below it, is flagged as having a second peak — one decay number
+    # can't describe a revival. A peak landing within `peak_boundary_weeks` of
+    # either end of the pulled window is flagged too: the real peak may sit
+    # outside the window. `pre_peak_rise_weeks` is how far back to compare when
+    # deciding a trend whose peak is its newest week is still climbing.
+    # `spike_peak_ratio` is the other half of the false-spike defence that
+    # smoothing starts: a peak whose surrounding weeks median below this
+    # fraction of it was propped up by a single week, not by a real hump.
+    secondary_peak_ratio: float = 0.8
+    spike_peak_ratio: float = 0.5
+    peak_boundary_weeks: int = 4
+    pre_peak_rise_weeks: int = 4
+
     # Google Trends caps requests at 5 keywords and rescales each batch 0-100
     # relative to that batch's own maximum, so raw values are not comparable
     # across batches. Including this keyword in every batch gives a shared
@@ -89,6 +104,10 @@ class Settings:
             "timeframe": self.timeframe,
             "geo": self.geo,
             "smoothing_window": self.smoothing_window,
+            "secondary_peak_ratio": self.secondary_peak_ratio,
+            "spike_peak_ratio": self.spike_peak_ratio,
+            "peak_boundary_weeks": self.peak_boundary_weeks,
+            "pre_peak_rise_weeks": self.pre_peak_rise_weeks,
             "anchor_keyword": self.anchor_keyword,
             "max_batch_keywords": self.max_batch_keywords,
             "low_resolution_threshold": self.low_resolution_threshold,
@@ -112,6 +131,10 @@ _FIELDS: tuple[tuple[str, Callable[[str], Any]], ...] = (
     ("timeframe", str),
     ("geo", str),
     ("smoothing_window", int),
+    ("secondary_peak_ratio", float),
+    ("spike_peak_ratio", float),
+    ("peak_boundary_weeks", int),
+    ("pre_peak_rise_weeks", int),
     ("anchor_keyword", str),
     ("max_batch_keywords", int),
     ("low_resolution_threshold", float),

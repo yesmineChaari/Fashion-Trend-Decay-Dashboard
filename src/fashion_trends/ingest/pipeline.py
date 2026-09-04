@@ -7,12 +7,12 @@ shared axis, and writes two artifacts under `settings.data_processed_dir`:
 * `series.parquet` — long format, one row per (trend, week): both the
   batch-raw and cross-batch-rescaled interest values, plus the
   `low_resolution` flag from the normalization step.
-* `metrics.parquet` — one row per successfully-collected trend, carrying
-  only the identity/provenance columns available at this stage (catalog
-  metadata plus `low_resolution`). The decay metrics themselves — peak
-  detection, % dropped, decay rate, lifecycle status — belong to the metrics
-  engine and are not computed here; that epic's tickets are expected to
-  extend this same table by joining onto `trend_id`, not to replace it.
+* `metrics.parquet` — one row per successfully-collected trend: the
+  identity/provenance columns (catalog metadata plus `low_resolution`) and
+  the peak columns from `fashion_trends.metrics.peaks`, which every decay
+  metric is measured against. The decay metrics themselves — % dropped,
+  decay rate, time-to-50%, lifecycle status — extend this same table by
+  joining onto `trend_id` rather than replacing it.
 
 A batch is the unit of failure: pytrends fetches every keyword in a batch
 in a single request, so a `RateLimitedError`/`NoDataError`/`TransportError`
@@ -34,6 +34,7 @@ from fashion_trends.ingest.batching import build_batches, is_low_resolution, res
 from fashion_trends.ingest.cache import fetch_batch, write_raw_manifest
 from fashion_trends.ingest.pytrends_client import TrendsClientError
 from fashion_trends.keywords import Trend, load_trends
+from fashion_trends.metrics.peaks import PEAK_COLUMNS, detect_peaks_by_trend
 from fashion_trends.metrics.smoothing import preprocess_series
 from fashion_trends.settings import Settings, write_manifest
 
@@ -179,11 +180,16 @@ def _build_series_frame(
     )
 
 
-def _build_metrics_frame(series: pd.DataFrame, trends_by_keyword: dict[str, Trend]) -> pd.DataFrame:
+_IDENTITY_COLUMNS = ["trend_id", "keyword", "display_name", "category", "isolate", "low_resolution"]
+
+
+def _build_metrics_frame(
+    series: pd.DataFrame,
+    trends_by_keyword: dict[str, Trend],
+    settings: Settings,
+) -> pd.DataFrame:
     if series.empty:
-        return pd.DataFrame(
-            columns=["trend_id", "keyword", "display_name", "category", "isolate", "low_resolution"]
-        )
+        return pd.DataFrame(columns=[*_IDENTITY_COLUMNS, *PEAK_COLUMNS])
 
     per_trend = series.groupby("trend_id", as_index=False)["low_resolution"].any()
     per_trend["keyword"] = per_trend["trend_id"].map(lambda tid: _trend_by_id(trends_by_keyword, tid).keyword)
@@ -192,7 +198,17 @@ def _build_metrics_frame(series: pd.DataFrame, trends_by_keyword: dict[str, Tren
     )
     per_trend["category"] = per_trend["trend_id"].map(lambda tid: _trend_by_id(trends_by_keyword, tid).category)
     per_trend["isolate"] = per_trend["trend_id"].map(lambda tid: _trend_by_id(trends_by_keyword, tid).isolate)
-    return per_trend[["trend_id", "keyword", "display_name", "category", "isolate", "low_resolution"]]
+
+    peaks = detect_peaks_by_trend(
+        series,
+        settings.smoothing_window,
+        settings.secondary_peak_ratio,
+        settings.spike_peak_ratio,
+        settings.peak_boundary_weeks,
+        settings.pre_peak_rise_weeks,
+    )
+    per_trend = per_trend[_IDENTITY_COLUMNS].merge(peaks, on="trend_id", how="left")
+    return per_trend[[*_IDENTITY_COLUMNS, *PEAK_COLUMNS]]
 
 
 def _trend_by_id(trends_by_keyword: dict[str, Trend], trend_id: str) -> Trend:
@@ -240,7 +256,7 @@ def run_pipeline(
         settings.low_resolution_threshold,
         settings.smoothing_window,
     )
-    metrics = _build_metrics_frame(series, trends_by_keyword)
+    metrics = _build_metrics_frame(series, trends_by_keyword, settings)
 
     settings.data_processed_dir.mkdir(parents=True, exist_ok=True)
     series_path = settings.data_processed_dir / SERIES_FILENAME

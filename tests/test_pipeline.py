@@ -12,6 +12,7 @@ from fashion_trends.ingest.pipeline import (
 )
 from fashion_trends.ingest.pytrends_client import NoDataError, RateLimitedError
 from fashion_trends.keywords import Trend
+from fashion_trends.metrics.peaks import PEAK_COLUMNS
 from fashion_trends.settings import Settings
 
 ANCHOR = "haute couture"
@@ -101,8 +102,12 @@ def test_run_pipeline_persists_series_and_metrics(monkeypatch, tmp_path):
         "category",
         "isolate",
         "low_resolution",
+        *PEAK_COLUMNS,
     }
     assert bool(metrics.loc[metrics["trend_id"] == "demure", "isolate"].iloc[0]) is True
+    # Peak detection runs as part of the same pass, so every persisted trend
+    # carries the peak its decay metrics will be measured against.
+    assert metrics["peak_date"].notna().all()
 
 
 def test_run_pipeline_tolerates_partial_batch_failure(monkeypatch, tmp_path):
