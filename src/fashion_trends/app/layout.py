@@ -1,7 +1,7 @@
 """Shared page chrome for the Streamlit dashboard.
 
 One module so every page renders the same header and the same first-run
-message, rather than each page under `app/pages/` deciding independently how
+message, rather than each page under `app/views/` deciding independently how
 to phrase either one.
 """
 

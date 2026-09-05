@@ -1,6 +1,6 @@
 """Cached data-access layer for the Streamlit dashboard.
 
-Every page under `app/pages/` reads `series.parquet`/`metrics.parquet`
+Every page under `app/views/` reads `series.parquet`/`metrics.parquet`
 through `load_dashboard_data` instead of touching either file directly, so
 there is exactly one place that decides how the parquet files are read and
 how a missing-data run is reported. It wraps

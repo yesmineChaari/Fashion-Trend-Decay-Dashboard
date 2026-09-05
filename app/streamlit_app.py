@@ -5,7 +5,7 @@
 
 Renders the global header (data pull date, timeframe, geo) and hands off to
 one of three pages via `st.navigation`: Overview, Trend detail, and Live
-search (see `app/pages/`), each of which loads its own data through
+search (see `app/views/`), each of which loads its own data through
 `fashion_trends.app.data.load_dashboard_data`. That loader is wrapped in
 `st.cache_data`, so this script re-running on every page switch or widget
 interaction — normal Streamlit behaviour — never re-reads either parquet
@@ -39,9 +39,14 @@ except ProcessedDataMissingError as exc:
 
 render_header(metrics)
 
+# Named `views/`, not `pages/` -- Streamlit auto-detects a literal `pages/`
+# directory next to the entry script for its older, implicit multipage
+# convention, which collides with the explicit `st.Page`/`st.navigation` API
+# used here (Streamlit warns "st.navigation was called in an app with a
+# pages/ directory" and recommends this exact rename).
 pages = [
-    st.Page("pages/overview.py", title="Overview", icon="📊", default=True),
-    st.Page("pages/trend_detail.py", title="Trend detail", icon="🔍"),
-    st.Page("pages/live_search.py", title="Live search", icon="🔎"),
+    st.Page("views/overview.py", title="Overview", icon="📊", default=True),
+    st.Page("views/trend_detail.py", title="Trend detail", icon="🔍"),
+    st.Page("views/live_search.py", title="Live search", icon="🔎"),
 ]
 st.navigation(pages).run()

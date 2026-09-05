@@ -1,6 +1,6 @@
 """Data shaping for the Overview page's ranked, filterable metrics table.
 
-Kept separate from `app/pages/overview.py` so this logic is testable without a
+Kept separate from `app/views/overview.py` so this logic is testable without a
 running Streamlit script — the same split `fashion_trends.app.data` and
 `fashion_trends.app.layout` already follow.
 
