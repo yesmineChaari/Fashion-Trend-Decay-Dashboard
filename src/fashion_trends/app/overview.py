@@ -121,23 +121,28 @@ def summary_tiles(metrics: pd.DataFrame) -> dict[str, Any]:
     }
 
 
-def _format_peak_date(row: pd.Series) -> str:
-    # Unlike the decay metrics below, `peak_date` is set even for a `pre_peak`
-    # trend — the peak is real, only the decay measured *from* it doesn't
-    # exist yet (see `fashion_trends.metrics.peaks`) — so a null here only
-    # ever means no peak was found at all.
+def format_peak_date(row: pd.Series) -> str:
+    """One metrics row's `peak_date`, display-ready. Public: reused by `fashion_trends.app.trend_detail`.
+
+    Unlike the decay metrics below, `peak_date` is set even for a `pre_peak`
+    trend — the peak is real, only the decay measured *from* it doesn't
+    exist yet (see `fashion_trends.metrics.peaks`) — so a null here only
+    ever means no peak was found at all.
+    """
     if pd.notna(row["peak_date"]):
         return row["peak_date"].date().isoformat()
     return NO_PEAK_DETECTED
 
 
-def _format_pct_dropped(row: pd.Series) -> str:
+def format_pct_dropped(row: pd.Series) -> str:
+    """One metrics row's `pct_dropped`, display-ready. Public: reused by `fashion_trends.app.trend_detail`."""
     if pd.notna(row["pct_dropped"]):
         return f"{row['pct_dropped']:.0f}%"
     return STILL_RISING if row["pre_peak"] else NO_PEAK_DETECTED
 
 
-def _format_decay_rate(row: pd.Series) -> str:
+def format_decay_rate(row: pd.Series) -> str:
+    """One metrics row's `decay_rate_linear`, display-ready. Public: reused by `fashion_trends.app.trend_detail`."""
     if pd.notna(row["decay_rate_linear"]):
         return f"{row['decay_rate_linear']:.2f} pts/wk"
     if row["pre_peak"]:
@@ -147,7 +152,8 @@ def _format_decay_rate(row: pd.Series) -> str:
     return NO_PEAK_DETECTED
 
 
-def _format_weeks_to_half(row: pd.Series) -> str:
+def format_weeks_to_half(row: pd.Series) -> str:
+    """One metrics row's `weeks_to_half`, display-ready. Public: reused by `fashion_trends.app.trend_detail`."""
     status = row["time_to_half_status"]
     if status == HALF_LIFE_CROSSED:
         return f"{int(row['weeks_to_half'])} wk"
@@ -158,7 +164,8 @@ def _format_weeks_to_half(row: pd.Series) -> str:
     return NO_PEAK_DETECTED
 
 
-def _format_flags(row: pd.Series) -> str:
+def format_flags(row: pd.Series) -> str:
+    """One metrics row's caveat flags, display-ready. Public: reused by `fashion_trends.app.trend_detail`."""
     labels = []
     if row["low_resolution"]:
         labels.append("low-resolution data")
@@ -186,11 +193,11 @@ def format_overview_table(metrics: pd.DataFrame) -> pd.DataFrame:
             "display_name": metrics["display_name"],
             "category": metrics["category"],
             "status": metrics["status"],
-            "peak_date": metrics.apply(_format_peak_date, axis=1),
-            "pct_dropped": metrics.apply(_format_pct_dropped, axis=1),
-            "decay_rate_linear": metrics.apply(_format_decay_rate, axis=1),
-            "weeks_to_half": metrics.apply(_format_weeks_to_half, axis=1),
-            "flags": metrics.apply(_format_flags, axis=1),
+            "peak_date": metrics.apply(format_peak_date, axis=1),
+            "pct_dropped": metrics.apply(format_pct_dropped, axis=1),
+            "decay_rate_linear": metrics.apply(format_decay_rate, axis=1),
+            "weeks_to_half": metrics.apply(format_weeks_to_half, axis=1),
+            "flags": metrics.apply(format_flags, axis=1),
         },
         index=metrics.index,
     )
