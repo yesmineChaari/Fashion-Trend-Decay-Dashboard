@@ -3,6 +3,49 @@
 How each metric in `metrics.parquet` is defined, so a reader comparing this
 project's figures against any other source knows exactly what they mean.
 
+## What Google Trends' 0-100 scale actually measures
+
+Every number this project consumes from Google Trends is **relative search
+interest**, not absolute search volume. For a given query, timeframe, and
+geography, Google Trends scales the busiest week in that window to 100 and
+every other week to its proportion of that maximum — it is not a count of
+searches, and it is not comparable across two separate pulls unless a shared
+keyword ties them together (see "Batching and anchor normalization" below).
+
+Two consequences that matter for reading this project's output:
+
+* A keyword's 100 in one pull and another keyword's 100 in a different pull
+  do not mean the same absolute volume. `pct_dropped`, `decay_rate_*`, and
+  every other metric here are computed *within* one trend's own series, so
+  they are safe to compare trend-to-trend — but a raw `peak_value` of 100
+  does not mean "as popular as" any other trend's `peak_value` of 100 unless
+  both came from the same batch (raw, unrescaled) or were explicitly
+  normalized against a shared anchor.
+* A drop in the 0-100 series is a drop in *share of that window's peak week*,
+  not proof that fewer people are searching in some absolute sense — the
+  same interest level reads differently in a window with a taller peak.
+
+## Why the timeframe choice changes the numbers
+
+Google Trends changes the granularity of what it returns based on how wide a
+window is requested, not on an explicit parameter — and granularity changes
+every downstream number, not just resolution:
+
+* Short windows (up to a few months) return daily points.
+* Medium windows return weekly points.
+* Windows wider than roughly five years silently drop to **monthly** points.
+
+This project fixes `timeframe = "today 5-y"` (`fashion_trends.settings.Settings.timeframe`)
+because it is the widest window that still returns weekly data — the
+finest resolution decay rate and time-to-half can be measured at without
+losing a week's worth of signal to monthly bucketing. Requesting six years
+instead of five would not just add a year of history; it would coarsen every
+week in the series, changing where peaks land and how fast a decay curve
+looks like it fell. Widening or narrowing the timeframe also rescales the
+whole 0-100 series against a new maximum (see above), so it is never a
+free change — it must be treated as a different measurement, not a longer
+view of the same one.
+
 ## The `metrics.parquet` schema
 
 One row per trend. `fashion_trends.metrics.compute_all` is the single entry
@@ -234,3 +277,66 @@ stayed down through it.
   the four that means missing data.
 
 See `fashion_trends.metrics.decay` for the implementation.
+
+## Batching and anchor normalization
+
+Google Trends caps a single request at 5 keywords and rescales that batch's
+own results 0-100 against whichever of the 5 peaked highest — so two
+keywords pulled in separate batches are not on the same axis unless
+something ties the batches together.
+
+`fashion_trends.ingest.batching` includes one fixed keyword
+(`Settings.anchor_keyword`, `"haute couture"` — see that setting's docstring
+and `docs/trend-selection.md` for how it was chosen) in every batch. The
+ratio between the anchor's measured peak in a given batch and its peak in a
+reference batch is the factor `rescale_batches` uses to put every batch back
+on one shared axis, and both the raw per-batch values and the rescaled ones
+are persisted, so nothing is lost to the rescaling.
+
+**Residual error.** This correction is only as precise as the anchor's own
+reading in each batch, and Google Trends' integer 0-100 output limits that
+precision:
+
+* A batch containing one of the catalog's two very high-volume trends
+  (`demure`, `labubu` — flagged `isolate: true` in `config/trends.yaml`)
+  crushes the anchor down to a handful of integer values, because the batch's
+  scale is dominated by that one keyword. The anchor's ratio derived from
+  such a batch is coarser than one derived from a batch of comparable-magnitude
+  keywords — which is why those two trends are always fetched alone with only
+  the anchor, and why their magnitude *relative to each other* cannot be
+  compared through this method even though their individual decay shapes are
+  unaffected.
+* The anchor itself is not perfectly flat — a real, recurring seasonal event
+  (Haute Couture Fashion Week) roughly doubles it twice a year — but the
+  rescaling only uses its measured *peak* within each batch, and a real
+  recurring high still gives a usable reference point, unlike an unrelated
+  data artifact.
+
+See `fashion_trends.ingest.batching` for the implementation and
+`docs/trend-selection.md` for the full anchor-selection writeup.
+
+## Stated limitations
+
+What this project's numbers are, and are not, evidence of:
+
+* **Search interest is a proxy for cultural relevance, not a measurement of
+  it.** A trend can be culturally significant with modest search volume, or
+  searched heavily for reasons unrelated to its cultural weight.
+* **Google Trends samples.** Repeat pulls of the same query, timeframe, and
+  geography can return slightly different numbers — the underlying data is
+  drawn from a sample of Google's traffic, not a full count.
+* **Keyword selection is editorial.** `config/trends.yaml` reflects a
+  judgement call about which terms represent a trend well (see
+  `docs/trend-selection.md`); a differently curated catalog would tell a
+  different story from the same underlying tool.
+* **Search interest can reflect curiosity or backlash, not adoption.** A
+  trend can spike in searches because people are mocking or criticizing it,
+  not because they are adopting it — this pipeline measures attention, not
+  sentiment or uptake.
+
+## A note on this project's origin
+
+This project was inspired by an Instagram reel about forgotten fashion
+trends. No output here — code, docs, charts, or the dashboard — cites,
+reproduces, or fact-checks that video's numbers. Every figure in this
+project is derived independently from the pipeline in this repo.
