@@ -71,7 +71,12 @@ def compute_all(series: pd.DataFrame, settings: Settings | None = None) -> pd.Da
         category=("category", "first"),
         low_resolution=("low_resolution", "any"),
     )
-    per_trend["isolate"] = per_trend["keyword"].map(isolate_by_keyword)
+    # A keyword outside the catalog — a live-search lookup — has no `isolate`
+    # setting to inherit, and the honest default is False: `isolate` describes
+    # a trend needing a batch to itself, and a live lookup is fetched alone
+    # regardless. Defaulted in the lookup rather than left as a NaN, since
+    # `astype("bool")` further down would turn that NaN into True.
+    per_trend["isolate"] = per_trend["keyword"].map(lambda kw: isolate_by_keyword.get(kw, False))
 
     peaks = detect_peaks_by_trend(
         series,

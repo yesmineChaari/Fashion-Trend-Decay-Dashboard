@@ -11,10 +11,13 @@ search (see `app/views/`), each of which loads its own data through
 interaction — normal Streamlit behaviour — never re-reads either parquet
 file from disk after the first read of a session.
 
-Reads only `data/processed/*.parquet`, through that same loader, and makes
-no network calls; refreshing data is `scripts/refresh_data.py`'s job, not
-this app's. The app never writes to `data/processed/` — it is strictly a
-reader, so a dashboard session can't corrupt the analysis artifacts.
+Reads the curated set only from `data/processed/*.parquet`, through that same
+loader; refreshing that data is `scripts/refresh_data.py`'s job, not this
+app's. The app never writes to `data/processed/` — it is strictly a reader
+there, so a dashboard session can't corrupt the analysis artifacts. The one
+place it reaches the network is Live search, which fetches a single ad-hoc
+keyword on demand through the ordinary ingest path (see
+`fashion_trends.app.live_search`) and leaves the curated artifacts alone.
 
 Shows a friendly setup screen instead of the pages when `data/processed/` is
 still empty on a first run.
