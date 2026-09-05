@@ -56,12 +56,6 @@ def _guard(original, name):
 @pytest.fixture(autouse=True)
 def block_network(monkeypatch):
     """Fail any test that opens a connection to somewhere other than loopback."""
-    monkeypatch.setattr(
-        socket.socket, "connect", _guard(socket.socket.connect, "socket.connect")
-    )
-    monkeypatch.setattr(
-        socket.socket, "connect_ex", _guard(socket.socket.connect_ex, "socket.connect_ex")
-    )
-    monkeypatch.setattr(
-        socket, "create_connection", _guard(socket.create_connection, "socket.create_connection")
-    )
+    monkeypatch.setattr(socket.socket, "connect", _guard(socket.socket.connect, "socket.connect"))
+    monkeypatch.setattr(socket.socket, "connect_ex", _guard(socket.socket.connect_ex, "socket.connect_ex"))
+    monkeypatch.setattr(socket, "create_connection", _guard(socket.create_connection, "socket.create_connection"))

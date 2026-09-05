@@ -27,8 +27,7 @@ Requires Python 3.10+.
 ```
 python -m venv .venv
 .venv\Scripts\activate      # macOS/Linux: source .venv/bin/activate
-pip install -r requirements.txt
-pip install -e .
+python tasks.py install
 ```
 
 ## Quickstart
@@ -36,9 +35,9 @@ pip install -e .
 Three steps, each reading only what the previous one wrote:
 
 ```
-python scripts/refresh_data.py --offline   # fetch + normalize -> data/processed/*.parquet
-python scripts/build_charts.py             # data/processed/*.parquet -> outputs/figures/*.png
-streamlit run app/streamlit_app.py         # browse the dashboard
+python tasks.py refresh --offline   # fetch + normalize -> data/processed/*.parquet
+python tasks.py charts               # data/processed/*.parquet -> outputs/figures/*.png
+python tasks.py app                  # browse the dashboard
 ```
 
 `refresh_data.py` fetches the curated catalog (`config/trends.yaml`) from
@@ -57,9 +56,29 @@ The Streamlit dashboard reads the same processed parquet files and adds one
 live path: its Live search page fetches and analyses any single ad-hoc
 keyword on demand, without touching the curated `data/processed/` artifacts.
 
+## Development
+
+`tasks.py` is the one-command entry point for everything below (a plain
+Python script rather than a Makefile, since the primary dev machine here is
+Windows/PowerShell without `make` on PATH):
+
+```
+python tasks.py lint      # ruff check + ruff format --check
+python tasks.py test      # pytest
+```
+
+Both run cleanly on a clean checkout. Lint and format are configured under
+`[tool.ruff]` in `pyproject.toml`; pytest's test paths and markers are under
+`[tool.pytest.ini_options]` in the same file — every test runs offline by
+default (see `tests/conftest.py`'s network guard).
+
+Optionally, `pip install pre-commit && pre-commit install` runs `lint` and
+`test` automatically before each commit (`.pre-commit-config.yaml`).
+
 ## Project layout
 
 ```
+tasks.py                     one-command install/lint/test/refresh/charts/app runner
 config/trends.yaml           curated trend catalog (id, keyword, category, notes)
 src/fashion_trends/
   settings.py                 every run parameter, in one place

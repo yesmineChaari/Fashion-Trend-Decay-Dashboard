@@ -125,9 +125,7 @@ def test_run_pipeline_tolerates_partial_batch_failure(monkeypatch, tmp_path):
     monkeypatch.setattr(pipeline_module, "load_trends", lambda: trends)
 
     mob_batch = pd.DataFrame({ANCHOR: [10, 50], "mob wife": [5, 25]}, index=_dates(2))
-    fetch = MagicMock(
-        side_effect=[RateLimitedError("rate limited"), _cached(mob_batch)]
-    )
+    fetch = MagicMock(side_effect=[RateLimitedError("rate limited"), _cached(mob_batch)])
     monkeypatch.setattr(pipeline_module, "fetch_batch", fetch)
 
     settings = _settings(tmp_path)
@@ -144,9 +142,7 @@ def test_run_pipeline_tolerates_partial_batch_failure(monkeypatch, tmp_path):
 def test_run_pipeline_raises_when_every_batch_fails(monkeypatch, tmp_path):
     trends = [_trend("mob", "mob wife")]
     monkeypatch.setattr(pipeline_module, "load_trends", lambda: trends)
-    monkeypatch.setattr(
-        pipeline_module, "fetch_batch", MagicMock(side_effect=NoDataError("no data"))
-    )
+    monkeypatch.setattr(pipeline_module, "fetch_batch", MagicMock(side_effect=NoDataError("no data")))
 
     settings = _settings(tmp_path)
     with pytest.raises(PipelineFailedError):

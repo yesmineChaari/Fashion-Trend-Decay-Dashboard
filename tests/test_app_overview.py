@@ -226,9 +226,7 @@ def test_format_overview_table_labels_still_above_half_as_never_halved():
 
 
 def test_format_overview_table_labels_zero_weeks_since_peak_as_just_peaked():
-    table = format_overview_table(
-        _minimal_row(decay_rate_linear=float("nan"), weeks_since_peak=0)
-    )
+    table = format_overview_table(_minimal_row(decay_rate_linear=float("nan"), weeks_since_peak=0))
 
     assert table.iloc[0]["decay_rate_linear"] == JUST_PEAKED
 

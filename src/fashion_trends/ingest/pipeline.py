@@ -69,8 +69,7 @@ class RunResult:
 
     def summary_lines(self) -> list[str]:
         lines = [
-            f"trends: {self.trends_succeeded} succeeded, {self.trends_failed} failed, "
-            f"{self.trends_requested} requested",
+            f"trends: {self.trends_succeeded} succeeded, {self.trends_failed} failed, {self.trends_requested} requested",
             f"elapsed: {self.elapsed_seconds:.1f}s",
             f"series:   {self.series_path}",
             f"metrics:  {self.metrics_path}",
@@ -89,9 +88,7 @@ def _select_trends(trend_ids: list[str] | None) -> list[Trend]:
     by_id = {trend.id: trend for trend in catalog}
     unknown = [tid for tid in trend_ids if tid not in by_id]
     if unknown:
-        raise UnknownTrendIdsError(
-            f"unknown trend id(s) {unknown!r} — not in the catalog ({sorted(by_id)})"
-        )
+        raise UnknownTrendIdsError(f"unknown trend id(s) {unknown!r} — not in the catalog ({sorted(by_id)})")
     return [by_id[tid] for tid in trend_ids]
 
 
@@ -130,7 +127,7 @@ def _build_series_frame(
     smoothing_window: int,
 ) -> pd.DataFrame:
     rows = []
-    for raw_frame, rescaled_frame in zip(raw_frames, rescaled_frames):
+    for raw_frame, rescaled_frame in zip(raw_frames, rescaled_frames, strict=True):
         for keyword in raw_frame.columns:
             if keyword == anchor_keyword:
                 continue
@@ -202,9 +199,7 @@ def run_pipeline(
     trends_succeeded = len(trends) - len(failed_keywords)
 
     if not cached_batches:
-        raise PipelineFailedError(
-            f"every batch failed — nothing to persist: {[f.reason for f in failures]}"
-        )
+        raise PipelineFailedError(f"every batch failed — nothing to persist: {[f.reason for f in failures]}")
 
     raw_frames = [cached.frame for cached in cached_batches]
     rescaled_frames = rescale_batches(raw_frames, settings.anchor_keyword)

@@ -66,7 +66,7 @@ def _series_caption(metrics_row: pd.Series) -> str:
     return ""
 
 
-def plot_trend_series(series: pd.DataFrame, metrics_row: pd.Series) -> "Figure":
+def plot_trend_series(series: pd.DataFrame, metrics_row: pd.Series) -> Figure:
     """Raw & smoothed weekly interest for one trend, peak and half-life annotated.
 
     `series` is `series.parquet`'s shape restricted to a single `trend_id`
@@ -89,25 +89,43 @@ def plot_trend_series(series: pd.DataFrame, metrics_row: pd.Series) -> "Figure":
     fig, ax = plt.subplots()
 
     ax.plot(
-        trend["date"], trend["interest_raw"], color=RAW_COLOR, alpha=RAW_ALPHA, linewidth=RAW_LINEWIDTH,
-        label="Raw interest", zorder=1,
+        trend["date"],
+        trend["interest_raw"],
+        color=RAW_COLOR,
+        alpha=RAW_ALPHA,
+        linewidth=RAW_LINEWIDTH,
+        label="Raw interest",
+        zorder=1,
     )
     ax.plot(
-        trend["date"], trend["interest_smooth"], color=style["color"], linestyle=style["linestyle"],
-        linewidth=SMOOTH_LINEWIDTH, label="Smoothed", zorder=2,
+        trend["date"],
+        trend["interest_smooth"],
+        color=style["color"],
+        linestyle=style["linestyle"],
+        linewidth=SMOOTH_LINEWIDTH,
+        label="Smoothed",
+        zorder=2,
     )
 
     if pd.notna(metrics_row["peak_date"]):
         ax.axvline(metrics_row["peak_date"], color=PEAK_MARKER_COLOR, linestyle="--", linewidth=1.0, zorder=0)
         ax.scatter(
-            [metrics_row["peak_date"]], [metrics_row["peak_value"]], color=PEAK_MARKER_COLOR, zorder=3,
-            label="Peak", marker="o",
+            [metrics_row["peak_date"]],
+            [metrics_row["peak_value"]],
+            color=PEAK_MARKER_COLOR,
+            zorder=3,
+            label="Peak",
+            marker="o",
         )
 
     if metrics_row["has_secondary_peak"] and pd.notna(metrics_row["secondary_peak_date"]):
         ax.scatter(
-            [metrics_row["secondary_peak_date"]], [metrics_row["secondary_peak_value"]],
-            color=SECONDARY_PEAK_MARKER_COLOR, zorder=3, label="Secondary peak (revival)", marker="^",
+            [metrics_row["secondary_peak_date"]],
+            [metrics_row["secondary_peak_value"]],
+            color=SECONDARY_PEAK_MARKER_COLOR,
+            zorder=3,
+            label="Secondary peak (revival)",
+            marker="^",
         )
 
     if pd.notna(metrics_row["peak_value"]) and not metrics_row["pre_peak"]:
@@ -116,8 +134,12 @@ def plot_trend_series(series: pd.DataFrame, metrics_row: pd.Series) -> "Figure":
 
         if metrics_row["time_to_half_status"] == HALF_LIFE_CROSSED and pd.notna(metrics_row["half_life_date"]):
             ax.scatter(
-                [metrics_row["half_life_date"]], [half_life_value], color=HALF_LIFE_MARKER_COLOR, zorder=3,
-                label="Half-life crossing", marker="x",
+                [metrics_row["half_life_date"]],
+                [half_life_value],
+                color=HALF_LIFE_MARKER_COLOR,
+                zorder=3,
+                label="Half-life crossing",
+                marker="x",
             )
 
     ax.set_xlabel("Week")
@@ -135,9 +157,7 @@ def plot_trend_series(series: pd.DataFrame, metrics_row: pd.Series) -> "Figure":
 # ---- vs. the median ----------------------------------------------------
 
 
-def build_trend_vs_median_frame(
-    series: pd.DataFrame, metrics: pd.DataFrame, trend_id: str
-) -> tuple[pd.DataFrame, pd.DataFrame]:
+def build_trend_vs_median_frame(series: pd.DataFrame, metrics: pd.DataFrame, trend_id: str) -> tuple[pd.DataFrame, pd.DataFrame]:
     """`(own, median)` peak-aligned curves: `trend_id`'s own, and every other eligible trend's median.
 
     Both are built from `fashion_trends.viz.decay_curves.build_decay_curve_frame`,
@@ -155,7 +175,7 @@ def build_trend_vs_median_frame(
     return own, median
 
 
-def plot_trend_vs_median(series: pd.DataFrame, metrics: pd.DataFrame, trend_id: str) -> "Figure":
+def plot_trend_vs_median(series: pd.DataFrame, metrics: pd.DataFrame, trend_id: str) -> Figure:
     """This trend's peak-aligned decay curve against the median of every other eligible trend.
 
     See `build_trend_vs_median_frame` for what "median" means here. When
@@ -171,22 +191,37 @@ def plot_trend_vs_median(series: pd.DataFrame, metrics: pd.DataFrame, trend_id: 
     fig, ax = plt.subplots()
 
     ax.plot(
-        median["weeks_since_peak"], median["pct_of_peak"], color=MEDIAN_LINE_COLOR, linestyle="--",
-        linewidth=1.5, label="Median of all other trends", zorder=1,
+        median["weeks_since_peak"],
+        median["pct_of_peak"],
+        color=MEDIAN_LINE_COLOR,
+        linestyle="--",
+        linewidth=1.5,
+        label="Median of all other trends",
+        zorder=1,
     )
 
     if not own.empty:
         style = category_style(row["category"])
         ax.plot(
-            own["weeks_since_peak"], own["pct_of_peak"], color=style["color"], linestyle=style["linestyle"],
-            linewidth=SMOOTH_LINEWIDTH, label=row["display_name"], zorder=2,
+            own["weeks_since_peak"],
+            own["pct_of_peak"],
+            color=style["color"],
+            linestyle=style["linestyle"],
+            linewidth=SMOOTH_LINEWIDTH,
+            label=row["display_name"],
+            zorder=2,
         )
     else:
         fig.text(
-            0.01, 0.01,
+            0.01,
+            0.01,
             f"{row['display_name']} has no post-peak curve to compare yet "
             "(still rising, or its peak sits at the edge of the pulled window).",
-            ha="left", va="bottom", fontsize=CAPTION_FONTSIZE, color=CAPTION_COLOR, style="italic",
+            ha="left",
+            va="bottom",
+            fontsize=CAPTION_FONTSIZE,
+            color=CAPTION_COLOR,
+            style="italic",
         )
 
     ax.axhline(HALF_LIFE_REFERENCE_PCT, color=PEAK_MARKER_COLOR, linestyle=":", linewidth=1.0, zorder=0)

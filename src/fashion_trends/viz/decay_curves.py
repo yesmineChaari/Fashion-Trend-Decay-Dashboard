@@ -83,12 +83,8 @@ def select_highlighted_trends(
     """
     eligible = _eligible_trends(metrics)
 
-    fastest = eligible[eligible["time_to_half_status"] == HALF_LIFE_CROSSED].nsmallest(
-        n_fast, "weeks_to_half"
-    )["trend_id"]
-    slowest = eligible[eligible["time_to_half_status"] == HALF_LIFE_STILL_ABOVE].nlargest(
-        n_slow, "weeks_since_peak"
-    )["trend_id"]
+    fastest = eligible[eligible["time_to_half_status"] == HALF_LIFE_CROSSED].nsmallest(n_fast, "weeks_to_half")["trend_id"]
+    slowest = eligible[eligible["time_to_half_status"] == HALF_LIFE_STILL_ABOVE].nlargest(n_slow, "weeks_since_peak")["trend_id"]
 
     return set(fastest) | set(slowest)
 
@@ -135,7 +131,7 @@ def _excluded_caption(metrics: pd.DataFrame) -> str:
     return f"Excluded (still rising, or peak at the edge of the pulled window): {names}"
 
 
-def plot_decay_curves(series: pd.DataFrame, metrics: pd.DataFrame) -> "Figure":
+def plot_decay_curves(series: pd.DataFrame, metrics: pd.DataFrame) -> Figure:
     """Build the peak-aligned decay curve overlay. See the module docstring."""
     apply_theme()
     frame = build_decay_curve_frame(series, metrics)

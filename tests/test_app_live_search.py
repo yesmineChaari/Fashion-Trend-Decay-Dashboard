@@ -37,7 +37,6 @@ def _weekly_index(periods=WEEKS):
 
 def _decaying_values(periods=WEEKS):
     """A clean rise-then-decay shape: peak in the middle, exponential fade after."""
-    index = np.arange(periods)
     peak_at = periods // 3
     rising = np.linspace(5, 100, peak_at + 1)
     falling = 100 * np.exp(-0.05 * np.arange(1, periods - peak_at))
@@ -160,9 +159,7 @@ def test_build_live_series_leaves_values_on_their_own_scale():
 
     series = build_live_series("barrel jeans", frame, smoothing_window=4)
 
-    pd.testing.assert_series_equal(
-        series["interest_rescaled"], series["interest_raw"], check_names=False
-    )
+    pd.testing.assert_series_equal(series["interest_rescaled"], series["interest_raw"], check_names=False)
     assert not series["low_resolution"].any()
 
 

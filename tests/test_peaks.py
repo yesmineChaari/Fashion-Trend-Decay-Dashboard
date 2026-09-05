@@ -25,9 +25,7 @@ def _detect(values, window=WINDOW, start="2026-01-04"):
 
 # A rise, a clear single peak, and a long decay — the shape every flag below is
 # defined against. Padded on both sides so the peak is nowhere near an edge.
-CLEAN_RISE_AND_FALL = (
-    [2, 3, 4, 5, 6, 10, 20, 40, 70, 95, 100, 80, 60, 45, 33, 25, 18, 13, 9, 6, 4, 3, 2, 2]
-)
+CLEAN_RISE_AND_FALL = [2, 3, 4, 5, 6, 10, 20, 40, 70, 95, 100, 80, 60, 45, 33, 25, 18, 13, 9, 6, 4, 3, 2, 2]
 
 
 # ---- the peak itself ----------------------------------------------------
@@ -55,9 +53,7 @@ def test_detect_peak_counts_weeks_from_the_peak_to_the_last_observation():
 
 def test_detect_peak_returns_empty_result_for_a_series_with_no_observations():
     dates = _weekly_dates(3)
-    processed = pd.DataFrame(
-        {"interest_raw": [float("nan")] * 3, "interest_smooth": [float("nan")] * 3}, index=dates
-    )
+    processed = pd.DataFrame({"interest_raw": [float("nan")] * 3, "interest_smooth": [float("nan")] * 3}, index=dates)
 
     result = detect_peak(processed, WINDOW, RATIO, SPIKE, BOUNDARY, RISE)
 

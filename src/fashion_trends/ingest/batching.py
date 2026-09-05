@@ -20,9 +20,9 @@ from dataclasses import dataclass
 
 import pandas as pd
 
+from fashion_trends.ingest.cache import fetch_batch, write_raw_manifest
 from fashion_trends.keywords import Trend
 from fashion_trends.settings import Settings
-from fashion_trends.ingest.cache import fetch_batch, write_raw_manifest
 
 
 def build_batches(
@@ -92,7 +92,7 @@ def rescale_batches(
         )
 
     rescaled = []
-    for frame, batch_peak in zip(batch_frames, anchor_peaks):
+    for frame, batch_peak in zip(batch_frames, anchor_peaks, strict=True):
         if batch_peak <= 0:
             raise ValueError(
                 f"anchor keyword {anchor_keyword!r} has a zero peak in one of the batches "
@@ -150,17 +150,14 @@ def collect_normalized_trends(
     rescaled/processed data is still the caller's job.
     """
     batches = build_batches(trends, settings.anchor_keyword, settings.max_batch_keywords)
-    cached_batches = [
-        fetch_batch(batch, settings.timeframe, settings.geo, settings, refresh=refresh)
-        for batch in batches
-    ]
+    cached_batches = [fetch_batch(batch, settings.timeframe, settings.geo, settings, refresh=refresh) for batch in batches]
     write_raw_manifest(settings, cached_batches)
 
     raw_frames = [cached.frame for cached in cached_batches]
     rescaled_frames = rescale_batches(raw_frames, settings.anchor_keyword)
 
     results: dict[str, NormalizedTrend] = {}
-    for raw_frame, rescaled_frame in zip(raw_frames, rescaled_frames):
+    for raw_frame, rescaled_frame in zip(raw_frames, rescaled_frames, strict=True):
         for keyword in raw_frame.columns:
             if keyword == settings.anchor_keyword:
                 continue

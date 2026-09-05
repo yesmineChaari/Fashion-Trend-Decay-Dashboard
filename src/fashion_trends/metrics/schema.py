@@ -103,9 +103,7 @@ def validate_metrics_schema(frame: pd.DataFrame) -> None:
     if actual_columns != expected_columns:
         missing = [c for c in expected_columns if c not in actual_columns]
         unexpected = [c for c in actual_columns if c not in expected_columns]
-        detail = f"missing: {missing}, unexpected: {unexpected}" if (missing or unexpected) else (
-            f"got order {actual_columns!r}"
-        )
+        detail = f"missing: {missing}, unexpected: {unexpected}" if (missing or unexpected) else (f"got order {actual_columns!r}")
         raise MetricsSchemaError(f"metrics frame does not match the canonical schema — {detail}")
 
     mismatched = {
@@ -114,6 +112,4 @@ def validate_metrics_schema(frame: pd.DataFrame) -> None:
         if str(frame[column].dtype) != expected_dtype
     }
     if mismatched:
-        raise MetricsSchemaError(
-            f"metrics frame has mismatched dtypes (actual, expected): {mismatched}"
-        )
+        raise MetricsSchemaError(f"metrics frame has mismatched dtypes (actual, expected): {mismatched}")

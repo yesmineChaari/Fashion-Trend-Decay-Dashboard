@@ -97,9 +97,7 @@ def _drop_partial_rows(frame: pd.DataFrame, keywords: list[str]) -> pd.DataFrame
         frame = frame.loc[~partial].drop(columns=["isPartial"])
 
     if frame.empty:
-        raise NoDataError(
-            f"Google Trends returned only partial-week rows for {keywords!r}"
-        )
+        raise NoDataError(f"Google Trends returned only partial-week rows for {keywords!r}")
 
     return frame
 
@@ -140,13 +138,9 @@ def fetch_interest_over_time(
                 )
                 _sleep_backoff(attempt)
                 continue
-            raise RateLimitedError(
-                f"Google Trends rate-limited {keywords!r} after {attempt} attempt(s)"
-            ) from exc
+            raise RateLimitedError(f"Google Trends rate-limited {keywords!r} after {attempt} attempt(s)") from exc
         except ResponseError as exc:
-            raise TransportError(
-                f"Google Trends rejected the request for {keywords!r}: {exc}"
-            ) from exc
+            raise TransportError(f"Google Trends rejected the request for {keywords!r}: {exc}") from exc
         except RequestException as exc:
             if attempt < total_attempts:
                 logger.warning(
@@ -158,9 +152,7 @@ def fetch_interest_over_time(
                 )
                 _sleep_backoff(attempt)
                 continue
-            raise TransportError(
-                f"Network error fetching {keywords!r} after {attempt} attempt(s): {exc}"
-            ) from exc
+            raise TransportError(f"Network error fetching {keywords!r} after {attempt} attempt(s): {exc}") from exc
         else:
             return _drop_partial_rows(frame, keywords)
 

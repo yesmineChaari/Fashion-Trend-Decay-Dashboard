@@ -148,9 +148,7 @@ def detect_peak(
     raw_at_peak = processed["interest_raw"].loc[peak_date]
     peak_value_raw = None if pd.isna(raw_at_peak) else float(raw_at_peak)
 
-    is_spike = _is_spike_driven(
-        processed["interest_raw"], peak_position, smoothing_window, peak_value, spike_peak_ratio
-    )
+    is_spike = _is_spike_driven(processed["interest_raw"], peak_position, smoothing_window, peak_value, spike_peak_ratio)
 
     # A second hump only counts if the series dropped back below the threshold
     # in between — otherwise it is a shoulder of the same peak, and calling it
@@ -158,9 +156,7 @@ def detect_peak(
     # Gap weeks count as below, which is the conservative reading: a hole in
     # the data is not evidence of a hump.
     above = (smooth >= secondary_peak_ratio * peak_value).fillna(False)
-    other_runs = [
-        (start, end) for start, end in _threshold_runs(above) if not start <= peak_position < end
-    ]
+    other_runs = [(start, end) for start, end in _threshold_runs(above) if not start <= peak_position < end]
     secondary_date: pd.Timestamp | None = None
     secondary_value: float | None = None
     if other_runs:

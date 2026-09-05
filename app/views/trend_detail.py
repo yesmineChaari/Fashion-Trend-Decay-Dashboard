@@ -24,7 +24,7 @@ if metrics.empty:
     st.info("No trend data loaded.")
     st.stop()
 
-trend_ids_by_name = dict(zip(metrics["display_name"], metrics["trend_id"]))
+trend_ids_by_name = dict(zip(metrics["display_name"], metrics["trend_id"], strict=True))
 selected_name = st.selectbox("Trend", sorted(trend_ids_by_name))
 trend_id = trend_ids_by_name[selected_name]
 

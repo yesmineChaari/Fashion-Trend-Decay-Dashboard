@@ -92,9 +92,7 @@ def test_a_current_level_above_the_peak_is_clamped_to_zero_and_flagged():
 
 
 def test_a_current_level_at_or_below_the_peak_is_not_flagged():
-    result = compute_pct_dropped(
-        _processed([100, 80, 60, 40, 20]), peak_value=100.0, pre_peak=False, smoothing_window=4
-    )
+    result = compute_pct_dropped(_processed([100, 80, 60, 40, 20]), peak_value=100.0, pre_peak=False, smoothing_window=4)
 
     assert not result.current_above_peak
 
@@ -103,9 +101,7 @@ def test_a_current_level_at_or_below_the_peak_is_not_flagged():
 
 
 def test_pct_dropped_is_null_for_a_pre_peak_trend():
-    result = compute_pct_dropped(
-        _processed([10, 20, 30, 40]), peak_value=40.0, pre_peak=True, smoothing_window=4
-    )
+    result = compute_pct_dropped(_processed([10, 20, 30, 40]), peak_value=40.0, pre_peak=True, smoothing_window=4)
 
     assert result.pct_dropped is None
     assert result.current_value is None
@@ -141,9 +137,7 @@ def test_a_zero_peak_yields_a_current_value_but_no_percentage():
 
 
 def _series_rows(trend_id, values, start="2026-01-04"):
-    return pd.DataFrame(
-        {"date": _dates(len(values), start=start), "trend_id": trend_id, "interest_raw": values}
-    )
+    return pd.DataFrame({"date": _dates(len(values), start=start), "trend_id": trend_id, "interest_raw": values})
 
 
 def _peak_row(trend_id, peak_value, pre_peak):
@@ -158,9 +152,7 @@ def test_compute_pct_dropped_by_trend_returns_one_row_per_trend():
         ],
         ignore_index=True,
     )
-    peaks = pd.DataFrame(
-        [_peak_row("mob", 100.0, False), _peak_row("demure", 50.0, True)]
-    )
+    peaks = pd.DataFrame([_peak_row("mob", 100.0, False), _peak_row("demure", 50.0, True)])
 
     result = compute_pct_dropped_by_trend(series, peaks, smoothing_window=4)
 
@@ -191,9 +183,7 @@ def _smoothed(values, start="2026-01-04"):
 
 
 def _decay_rate(processed, weeks_since_peak, pct_dropped, pre_peak=False, min_fit_weeks=8):
-    return compute_decay_rate(
-        processed, processed.index[0], weeks_since_peak, pct_dropped, pre_peak, min_fit_weeks
-    )
+    return compute_decay_rate(processed, processed.index[0], weeks_since_peak, pct_dropped, pre_peak, min_fit_weeks)
 
 
 def _exponential(peak, k, weeks):
@@ -238,9 +228,7 @@ def test_a_trend_that_dropped_then_plateaued_fits_badly_and_says_so():
     # single decay number for this shape.
     cliff_then_flat = [100.0, 40.0] + [38.0] * 18
     plateaued = _decay_rate(_smoothed(cliff_then_flat), weeks_since_peak=19, pct_dropped=62.0)
-    clean = _decay_rate(
-        _smoothed(_exponential(peak=100.0, k=0.12, weeks=20)), weeks_since_peak=19, pct_dropped=90.0
-    )
+    clean = _decay_rate(_smoothed(_exponential(peak=100.0, k=0.12, weeks=20)), weeks_since_peak=19, pct_dropped=90.0)
 
     assert plateaued.decay_fit_r2 < 0.6
     assert clean.decay_fit_r2 > plateaued.decay_fit_r2
@@ -263,9 +251,7 @@ def test_a_post_peak_segment_shorter_than_the_minimum_is_not_fitted():
     # Six weeks of decline cannot support a decay constant that would be
     # extrapolated over years -- null is the honest answer, though the linear
     # reading still stands.
-    result = _decay_rate(
-        _smoothed(_exponential(peak=100.0, k=0.2, weeks=6)), weeks_since_peak=5, pct_dropped=60.0
-    )
+    result = _decay_rate(_smoothed(_exponential(peak=100.0, k=0.2, weeks=6)), weeks_since_peak=5, pct_dropped=60.0)
 
     assert result.decay_rate_exp is None
     assert result.decay_fit_r2 is None
@@ -301,9 +287,7 @@ def test_the_fit_starts_at_the_peak_week_not_at_the_start_of_the_series():
 
 
 def test_decay_rate_is_null_for_a_pre_peak_trend():
-    result = _decay_rate(
-        _smoothed([10.0, 20.0, 30.0] * 4), weeks_since_peak=0, pct_dropped=None, pre_peak=True
-    )
+    result = _decay_rate(_smoothed([10.0, 20.0, 30.0] * 4), weeks_since_peak=0, pct_dropped=None, pre_peak=True)
 
     assert result.decay_rate_linear is None
     assert result.decay_rate_exp is None
@@ -323,9 +307,7 @@ def test_decay_rate_linear_is_null_when_the_peak_is_the_most_recent_week():
 def test_decay_rate_linear_is_null_when_pct_dropped_is():
     # No peak was found, or the peak was zero -- either way there is no drop
     # to spread over the weeks. The fit is independent and still runs.
-    result = _decay_rate(
-        _smoothed(_exponential(peak=100.0, k=0.1, weeks=20)), weeks_since_peak=19, pct_dropped=None
-    )
+    result = _decay_rate(_smoothed(_exponential(peak=100.0, k=0.1, weeks=20)), weeks_since_peak=19, pct_dropped=None)
 
     assert result.decay_rate_linear is None
     assert result.decay_rate_exp == pytest.approx(0.1, abs=1e-9)
@@ -342,9 +324,7 @@ def test_decay_rate_is_null_when_no_peak_date_was_found():
 
 
 def _smoothed_series_rows(trend_id, values, start="2026-01-04"):
-    return pd.DataFrame(
-        {"date": _dates(len(values), start=start), "trend_id": trend_id, "interest_smooth": values}
-    )
+    return pd.DataFrame({"date": _dates(len(values), start=start), "trend_id": trend_id, "interest_smooth": values})
 
 
 def _decay_peak_row(trend_id, peak_date, weeks_since_peak, pre_peak):
@@ -370,9 +350,7 @@ def test_compute_decay_rate_by_trend_returns_one_row_per_trend():
             _decay_peak_row("demure", dates[-1], 0, True),
         ]
     )
-    pct_dropped = pd.DataFrame(
-        [{"trend_id": "mob", "pct_dropped": 85.0}, {"trend_id": "demure", "pct_dropped": None}]
-    )
+    pct_dropped = pd.DataFrame([{"trend_id": "mob", "pct_dropped": 85.0}, {"trend_id": "demure", "pct_dropped": None}])
 
     result = compute_decay_rate_by_trend(series, peaks, pct_dropped, min_fit_weeks=8)
 
@@ -402,9 +380,7 @@ def test_compute_decay_rate_by_trend_types_columns_even_when_every_result_is_nul
 
 def _time_to_half(values, peak_value=100.0, pre_peak=False, sustained_weeks=2, peak_position=0):
     processed = _smoothed(values)
-    return compute_time_to_half(
-        processed, processed.index[peak_position], peak_value, pre_peak, sustained_weeks
-    )
+    return compute_time_to_half(processed, processed.index[peak_position], peak_value, pre_peak, sustained_weeks)
 
 
 def test_a_synthetic_series_returns_the_week_it_crossed_below_half():

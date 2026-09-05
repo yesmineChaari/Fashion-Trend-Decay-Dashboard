@@ -32,10 +32,7 @@ from fashion_trends.viz.trend_detail import plot_trend_series
 LAST_LOOKUP_KEY = "live_search_last_lookup_at"
 
 st.title("Live search")
-st.caption(
-    "Analyse any fashion keyword, not just the curated catalog. Results are "
-    "pulled from Google Trends when you submit."
-)
+st.caption("Analyse any fashion keyword, not just the curated catalog. Results are pulled from Google Trends when you submit.")
 
 settings = get_settings()
 
@@ -50,9 +47,7 @@ with st.form("live_search"):
         value=settings.timeframe,
         help="Google Trends timeframe string. 'today 5-y' is the longest window still returning weekly data.",
     )
-    geo = geo_column.text_input(
-        "Geo", value=settings.geo, help="Two-letter country code, or blank for worldwide."
-    )
+    geo = geo_column.text_input("Geo", value=settings.geo, help="Two-letter country code, or blank for worldwide.")
     submitted = st.form_submit_button("Analyse")
 
 keyword = normalize_keyword(keyword_input)
@@ -66,10 +61,7 @@ if not keyword:
 
 wait_seconds = seconds_until_next_lookup(st.session_state.get(LAST_LOOKUP_KEY), time.monotonic())
 if wait_seconds > 0:
-    st.warning(
-        f"Slow down a moment — one lookup every {MIN_SECONDS_BETWEEN_LOOKUPS:.0f}s. "
-        f"Try again in {wait_seconds:.0f}s."
-    )
+    st.warning(f"Slow down a moment — one lookup every {MIN_SECONDS_BETWEEN_LOOKUPS:.0f}s. Try again in {wait_seconds:.0f}s.")
     st.stop()
 st.session_state[LAST_LOOKUP_KEY] = time.monotonic()
 

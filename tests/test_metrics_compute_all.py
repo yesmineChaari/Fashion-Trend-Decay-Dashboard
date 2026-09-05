@@ -1,5 +1,4 @@
 import pandas as pd
-import pytest
 
 from fashion_trends import metrics as metrics_module
 from fashion_trends.keywords import Trend

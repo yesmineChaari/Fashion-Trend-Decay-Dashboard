@@ -201,9 +201,7 @@ def test_exponential_decay_pct_dropped_and_linear_rate_follow_from_the_peak():
 
     assert row["current_value"] == pytest.approx(current_value)
     assert row["pct_dropped"] == pytest.approx(pct_dropped)
-    assert row["decay_rate_linear"] == pytest.approx(
-        pct_dropped / (EXP_WEEKS - 1 - EXP_PEAK_POSITION)
-    )
+    assert row["decay_rate_linear"] == pytest.approx(pct_dropped / (EXP_WEEKS - 1 - EXP_PEAK_POSITION))
     assert bool(row["current_above_peak"]) is False
 
 
@@ -214,9 +212,7 @@ def test_exponential_decay_crosses_half_its_peak_on_the_derived_week():
     # where factor is the centred mean of e^{2k}, e^{k}, 1, e^{-k}. Solving
     # 100 * factor * e^-kj < peak_value / 2 gives j > 18.48, so week 19 is the
     # first below the threshold -- and it stays below, so that is the crossing.
-    factor = (
-        math.exp(2 * EXP_DECAY_K) + math.exp(EXP_DECAY_K) + 1 + math.exp(-EXP_DECAY_K)
-    ) / 4
+    factor = (math.exp(2 * EXP_DECAY_K) + math.exp(EXP_DECAY_K) + 1 + math.exp(-EXP_DECAY_K)) / 4
     expected_weeks = math.ceil(math.log(100 * factor / (0.5 * peak_value)) / EXP_DECAY_K)
     assert expected_weeks == 19
 
@@ -264,9 +260,7 @@ def test_linear_decay_peak_and_drop_are_exact():
     # The last four raw weeks are 13, 12, 11, 10.
     assert row["current_value"] == pytest.approx(11.5)
     assert row["pct_dropped"] == pytest.approx((99.375 - 11.5) / 99.375 * 100)
-    assert row["decay_rate_linear"] == pytest.approx(
-        (99.375 - 11.5) / 99.375 * 100 / LIN_TAIL_WEEKS
-    )
+    assert row["decay_rate_linear"] == pytest.approx((99.375 - 11.5) / 99.375 * 100 / LIN_TAIL_WEEKS)
 
 
 def test_linear_decay_crosses_half_its_peak_on_the_derived_week():
@@ -668,6 +662,4 @@ def test_each_shape_lands_on_the_lifecycle_label_it_was_built_for():
         STATUS_UNKNOWN: np.full(30, np.nan),
     }
 
-    assert {status: metrics_for(values)["status"] for status, values in shapes.items()} == {
-        status: status for status in shapes
-    }
+    assert {status: metrics_for(values)["status"] for status, values in shapes.items()} == {status: status for status in shapes}

@@ -11,8 +11,9 @@ this one's.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 import pandas as pd
 
@@ -30,7 +31,7 @@ if TYPE_CHECKING:
 # writes in regardless of the order a caller asks for. `plot_drop_ranking` and
 # `plot_time_to_decline` don't need `series`, but every builder here takes
 # `(series, metrics)` so the table stays one shape.
-_FIGURE_SPECS: dict[str, tuple[str, Callable[[pd.DataFrame, pd.DataFrame], "Figure"]]] = {
+_FIGURE_SPECS: dict[str, tuple[str, Callable[[pd.DataFrame, pd.DataFrame], Figure]]] = {
     "decay": ("decay_curves", lambda series, metrics: plot_decay_curves(series, metrics)),
     "ranking": ("drop_ranking", lambda series, metrics: plot_drop_ranking(metrics)),
     "decline": ("time_to_decline", lambda series, metrics: plot_time_to_decline(metrics)),
@@ -61,8 +62,7 @@ def load_processed_data(settings: Settings) -> tuple[pd.DataFrame, pd.DataFrame]
     missing = [p for p in (series_path, metrics_path) if not p.exists()]
     if missing:
         raise ProcessedDataMissingError(
-            f"missing processed data: {[str(p) for p in missing]} — "
-            "run scripts/refresh_data.py first to fetch and persist it"
+            f"missing processed data: {[str(p) for p in missing]} — run scripts/refresh_data.py first to fetch and persist it"
         )
     return pd.read_parquet(series_path), pd.read_parquet(metrics_path)
 
@@ -86,7 +86,7 @@ def stale_data_warning(metrics: pd.DataFrame, settings: Settings) -> str | None:
     return (
         f"warning: processed data is {age_days} day(s) old (cache TTL is "
         f"{settings.cache_ttl_days}) — run scripts/refresh_data.py --refresh "
-        "before publishing a \"current interest\" chart"
+        'before publishing a "current interest" chart'
     )
 
 

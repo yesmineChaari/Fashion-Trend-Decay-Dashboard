@@ -118,7 +118,7 @@ def drop_ranking_caption(metrics: pd.DataFrame) -> str:
     return "\n".join(lines)
 
 
-def plot_drop_ranking(metrics: pd.DataFrame) -> "Figure":
+def plot_drop_ranking(metrics: pd.DataFrame) -> Figure:
     """Build the ranked % drop chart. See the module docstring."""
     apply_theme()
     # Reversed so the biggest drop -- first in the descending ranking -- lands
@@ -131,12 +131,12 @@ def plot_drop_ranking(metrics: pd.DataFrame) -> "Figure":
     colors = [status_style(status) for status in ranked["status"]]
     ax.barh(y_positions, ranked["pct_dropped"], color=colors, height=BAR_HEIGHT, zorder=2)
 
-    for y, pct in zip(y_positions, ranked["pct_dropped"]):
+    for y, pct in zip(y_positions, ranked["pct_dropped"], strict=True):
         ax.text(pct + VALUE_LABEL_GAP, y, f"{pct:.0f}%", va="center", fontsize=8)
 
     ax.set_yticks(list(y_positions))
     ax.set_yticklabels(
-        [_peak_label(name, date) for name, date in zip(ranked["display_name"], ranked["peak_date"])],
+        [_peak_label(name, date) for name, date in zip(ranked["display_name"], ranked["peak_date"], strict=True)],
         fontsize=8,
     )
     ax.set_xlim(0, 108)
@@ -208,7 +208,7 @@ def time_to_decline_caption(metrics: pd.DataFrame) -> str:
     return "\n".join(lines)
 
 
-def plot_time_to_decline(metrics: pd.DataFrame) -> "Figure":
+def plot_time_to_decline(metrics: pd.DataFrame) -> Figure:
     """Build the time-to-50%-decline chart. See the module docstring."""
     apply_theme()
     crossed, still_above = build_time_to_decline_frames(metrics)
@@ -278,6 +278,4 @@ def save_time_to_decline_figure(metrics: pd.DataFrame, settings: Settings | None
     fig = plot_time_to_decline(metrics)
     pull_date = metrics["data_pull_date"].iloc[0]
     timeframe = metrics["timeframe"].iloc[0]
-    return save_figure(
-        fig, settings.figures_dir / TIME_TO_DECLINE_FILENAME, pull_date=pull_date, timeframe=timeframe
-    )
+    return save_figure(fig, settings.figures_dir / TIME_TO_DECLINE_FILENAME, pull_date=pull_date, timeframe=timeframe)

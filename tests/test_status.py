@@ -2,8 +2,8 @@ import pandas as pd
 import pytest
 
 from fashion_trends.metrics.status import (
-    STATUS_COLUMNS,
     STATUS_COLLAPSED,
+    STATUS_COLUMNS,
     STATUS_DECLINING,
     STATUS_PRE_PEAK,
     STATUS_REVIVED,
@@ -64,9 +64,7 @@ def test_unknown_takes_precedence_over_every_other_flag():
     # Nonsensical combination on purpose: even a trend flagged pre_peak and
     # revived is reported as unknown once there is no peak to hang either
     # label on.
-    result = _classify(
-        [100.0] * 30, pre_peak=True, has_secondary_peak=True, weeks_since_peak=None, pct_dropped=90.0
-    )
+    result = _classify([100.0] * 30, pre_peak=True, has_secondary_peak=True, weeks_since_peak=None, pct_dropped=90.0)
 
     assert result.status == STATUS_UNKNOWN
 
@@ -81,9 +79,7 @@ def test_status_is_pre_peak_when_still_climbing():
 
 
 def test_pre_peak_takes_precedence_over_revived_and_collapsed():
-    result = _classify(
-        [100.0] * 30, pre_peak=True, has_secondary_peak=True, weeks_since_peak=0, pct_dropped=90.0
-    )
+    result = _classify([100.0] * 30, pre_peak=True, has_secondary_peak=True, weeks_since_peak=0, pct_dropped=90.0)
 
     assert result.status == STATUS_PRE_PEAK
 
@@ -107,9 +103,7 @@ def test_revived_takes_precedence_over_collapsed():
 
 def test_revived_takes_precedence_over_stabilized():
     flat = [50.0] * STABILIZED_WINDOW
-    result = _classify(
-        flat, has_secondary_peak=True, weeks_since_peak=STABILIZED_WINDOW, pct_dropped=10.0
-    )
+    result = _classify(flat, has_secondary_peak=True, weeks_since_peak=STABILIZED_WINDOW, pct_dropped=10.0)
 
     assert result.status == STATUS_REVIVED
 
@@ -133,9 +127,7 @@ def test_collapsed_takes_precedence_over_stabilized_even_when_flat():
     # Faded almost to nothing and then went flat at that residual floor --
     # still a collapse, not a plateau worth calling a wardrobe staple.
     flat_near_zero = [100.0] + [5.0] * STABILIZED_WINDOW
-    result = _classify(
-        flat_near_zero, weeks_since_peak=STABILIZED_WINDOW, pct_dropped=95.0
-    )
+    result = _classify(flat_near_zero, weeks_since_peak=STABILIZED_WINDOW, pct_dropped=95.0)
 
     assert result.status == STATUS_COLLAPSED
 
@@ -251,9 +243,7 @@ def test_every_case_returns_exactly_one_of_the_named_statuses(kwargs):
 
 
 def _smoothed_series_rows(trend_id, values, start="2026-01-04"):
-    return pd.DataFrame(
-        {"date": _dates(len(values), start=start), "trend_id": trend_id, "interest_smooth": values}
-    )
+    return pd.DataFrame({"date": _dates(len(values), start=start), "trend_id": trend_id, "interest_smooth": values})
 
 
 def _peak_row(trend_id, pre_peak=False, has_secondary_peak=False, weeks_since_peak=0):
@@ -278,9 +268,7 @@ def test_compute_status_by_trend_returns_one_row_per_trend():
             _peak_row("demure", weeks_since_peak=STABILIZED_WINDOW),
         ]
     )
-    pct_dropped = pd.DataFrame(
-        [{"trend_id": "mob", "pct_dropped": 40.0}, {"trend_id": "demure", "pct_dropped": 40.0}]
-    )
+    pct_dropped = pd.DataFrame([{"trend_id": "mob", "pct_dropped": 40.0}, {"trend_id": "demure", "pct_dropped": 40.0}])
 
     result = compute_status_by_trend(
         series, peaks, pct_dropped, COLLAPSED_THRESHOLD, STABILIZED_WINDOW, FLAT_TOLERANCE, MIN_RETAINED_PCT

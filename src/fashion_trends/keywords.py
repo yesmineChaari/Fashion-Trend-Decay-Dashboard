@@ -55,9 +55,7 @@ def load_trends(path: Path | str = DEFAULT_CATALOG_PATH) -> list[Trend]:
         missing = [field for field in REQUIRED_FIELDS if not entry.get(field)]
         if missing:
             label = entry.get("id", f"#{index}")
-            raise TrendCatalogError(
-                f"{path}: entry '{label}' is missing required field(s): {', '.join(missing)}"
-            )
+            raise TrendCatalogError(f"{path}: entry '{label}' is missing required field(s): {', '.join(missing)}")
 
         trend_id = entry["id"]
         keyword = entry["keyword"]
@@ -65,8 +63,7 @@ def load_trends(path: Path | str = DEFAULT_CATALOG_PATH) -> list[Trend]:
 
         if category not in VALID_CATEGORIES:
             raise TrendCatalogError(
-                f"{path}: entry '{trend_id}' has invalid category '{category}' "
-                f"(must be one of {sorted(VALID_CATEGORIES)})"
+                f"{path}: entry '{trend_id}' has invalid category '{category}' (must be one of {sorted(VALID_CATEGORIES)})"
             )
 
         if trend_id in seen_ids:

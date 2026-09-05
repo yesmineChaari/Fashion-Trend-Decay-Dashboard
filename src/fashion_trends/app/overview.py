@@ -71,8 +71,7 @@ OVERVIEW_COLUMN_HELP = {
         "(fashion_trends.metrics.decay.compute_pct_dropped)."
     ),
     "decay_rate_linear": (
-        "Percentage points of the peak lost per week since peak "
-        "(fashion_trends.metrics.decay.compute_decay_rate)."
+        "Percentage points of the peak lost per week since peak (fashion_trends.metrics.decay.compute_decay_rate)."
     ),
     "weeks_to_half": (
         "Weeks from peak until the series held below half its peak for a sustained run "

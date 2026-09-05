@@ -56,9 +56,7 @@ def test_fetch_drops_partial_rows_and_returns_frame(monkeypatch, caplog):
     assert list(result["mob wife aesthetic"]) == [10]
     assert list(result.index) == [pd.Timestamp("2026-08-24")]
     assert "Dropping 1 trailing partial-week row" in caplog.text
-    trend_req.build_payload.assert_called_once_with(
-        ["mob wife aesthetic"], timeframe="today 5-y", geo="US"
-    )
+    trend_req.build_payload.assert_called_once_with(["mob wife aesthetic"], timeframe="today 5-y", geo="US")
 
 
 def test_empty_response_raises_no_data_error(monkeypatch):
@@ -87,9 +85,7 @@ def test_rate_limit_retries_then_succeeds(monkeypatch):
 
 def test_rate_limit_exhausting_retries_raises_rate_limited_error(monkeypatch):
     trend_req = MagicMock()
-    trend_req.interest_over_time.side_effect = TooManyRequestsError.from_response(
-        _fake_response(429)
-    )
+    trend_req.interest_over_time.side_effect = TooManyRequestsError.from_response(_fake_response(429))
     _install_fake_trend_req(monkeypatch, trend_req)
 
     with pytest.raises(RateLimitedError):

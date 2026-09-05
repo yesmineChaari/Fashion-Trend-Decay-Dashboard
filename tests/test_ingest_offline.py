@@ -24,6 +24,7 @@ from unittest.mock import MagicMock
 import pandas as pd
 import pytest
 
+from conftest import NetworkAccessDuringTestError
 from fashion_trends.ingest import cache as cache_module
 from fashion_trends.ingest import pipeline as pipeline_module
 from fashion_trends.ingest import pytrends_client as client_module
@@ -39,8 +40,6 @@ from fashion_trends.ingest.pytrends_client import NoDataError, RateLimitedError
 from fashion_trends.keywords import Trend, load_trends
 from fashion_trends.metrics.schema import METRICS_COLUMNS
 from fashion_trends.settings import Settings
-
-from conftest import NetworkAccessDuringTestError
 
 ANCHOR = "haute couture"
 
@@ -160,9 +159,7 @@ def test_run_pipeline_sends_the_anchor_with_every_batch_it_fetches(monkeypatch, 
 # ---- normalization end to end ---------------------------------------------
 
 
-def test_a_known_anchor_ratio_rescales_all_the_way_into_the_persisted_series(
-    monkeypatch, tmp_path
-):
+def test_a_known_anchor_ratio_rescales_all_the_way_into_the_persisted_series(monkeypatch, tmp_path):
     # The anchor peaks at 100 in one batch and 50 in the other, so the second
     # batch's values must come out doubled onto the first batch's axis while
     # its raw column is persisted untouched alongside them.
@@ -171,9 +168,7 @@ def test_a_known_anchor_ratio_rescales_all_the_way_into_the_persisted_series(
 
     reference = pd.DataFrame({ANCHOR: [50, 100, 75, 60], "tall trend": [20, 80, 60, 40]}, index=dates(4))
     crushed = pd.DataFrame({ANCHOR: [25, 50, 38, 30], "small trend": [10, 40, 30, 20]}, index=dates(4))
-    monkeypatch.setattr(
-        pipeline_module, "fetch_batch", MagicMock(side_effect=[cached(crushed), cached(reference)])
-    )
+    monkeypatch.setattr(pipeline_module, "fetch_batch", MagicMock(side_effect=[cached(crushed), cached(reference)]))
 
     result = run_pipeline(settings_for(tmp_path))
     series = pd.read_parquet(result.series_path).set_index(["trend_id", "date"])
@@ -186,9 +181,7 @@ def test_a_known_anchor_ratio_rescales_all_the_way_into_the_persisted_series(
     assert list(tall["interest_rescaled"]) == pytest.approx(list(tall["interest_raw"]))
 
 
-def test_a_trend_that_never_clears_the_noise_floor_is_flagged_low_resolution(
-    monkeypatch, tmp_path
-):
+def test_a_trend_that_never_clears_the_noise_floor_is_flagged_low_resolution(monkeypatch, tmp_path):
     trends = [trend("tall", "tall trend"), trend("tiny", "tiny trend", isolate=True)]
     monkeypatch.setattr(pipeline_module, "load_trends", lambda: trends)
 
@@ -196,9 +189,7 @@ def test_a_trend_that_never_clears_the_noise_floor_is_flagged_low_resolution(
     # The anchor is not crushed here, so `tiny trend`'s 1-3 stays 1-3 after
     # rescaling -- below the 5.0 noise floor on the shared axis.
     tiny = pd.DataFrame({ANCHOR: [50, 100, 75, 60], "tiny trend": [1, 3, 2, 1]}, index=dates(4))
-    monkeypatch.setattr(
-        pipeline_module, "fetch_batch", MagicMock(side_effect=[cached(tiny), cached(reference)])
-    )
+    monkeypatch.setattr(pipeline_module, "fetch_batch", MagicMock(side_effect=[cached(tiny), cached(reference)]))
 
     result = run_pipeline(settings_for(tmp_path))
     metrics = pd.read_parquet(result.metrics_path).set_index("trend_id")
@@ -284,9 +275,7 @@ def test_a_response_of_nothing_but_partial_weeks_is_no_data(monkeypatch):
     )
 
     with pytest.raises(NoDataError):
-        client_module.fetch_interest_over_time(
-            ["mob wife"], "today 5-y", "US", Settings(request_delay_seconds=0.0)
-        )
+        client_module.fetch_interest_over_time(["mob wife"], "today 5-y", "US", Settings(request_delay_seconds=0.0))
 
 
 # ---- retry and backoff ----------------------------------------------------
@@ -308,9 +297,7 @@ def test_backoff_between_retries_grows_exponentially(monkeypatch):
     monkeypatch.setattr(client_module, "TrendReq", MagicMock(return_value=trend_req))
 
     with pytest.raises(RateLimitedError):
-        client_module.fetch_interest_over_time(
-            ["kw"], "today 5-y", "US", Settings(max_retries=3, request_delay_seconds=0.0)
-        )
+        client_module.fetch_interest_over_time(["kw"], "today 5-y", "US", Settings(max_retries=3, request_delay_seconds=0.0))
 
     # Four attempts, three backoffs: 1s, 2s, 4s. Retrying at a fixed interval
     # against a rate limiter is how a temporary 429 becomes a permanent one.
@@ -321,9 +308,7 @@ def test_backoff_between_retries_grows_exponentially(monkeypatch):
 # ---- the orchestrator's manifest ------------------------------------------
 
 
-def test_a_partial_failure_records_the_failed_keywords_in_the_processed_manifest(
-    monkeypatch, tmp_path
-):
+def test_a_partial_failure_records_the_failed_keywords_in_the_processed_manifest(monkeypatch, tmp_path):
     trends = [trend("mob", "mob wife"), trend("demure", "demure", isolate=True)]
     monkeypatch.setattr(pipeline_module, "load_trends", lambda: trends)
 
@@ -366,16 +351,12 @@ def test_every_persisted_keyword_has_a_raw_manifest_entry(monkeypatch, tmp_path)
 
     demure = pd.DataFrame({ANCHOR: [40, 100, 80, 60], "demure": [50, 100, 90, 70]}, index=dates(4))
     mob = pd.DataFrame({ANCHOR: [10, 50, 40, 30], "mob wife": [5, 25, 20, 15]}, index=dates(4))
-    monkeypatch.setattr(
-        pipeline_module, "fetch_batch", MagicMock(side_effect=[cached(demure), cached(mob)])
-    )
+    monkeypatch.setattr(pipeline_module, "fetch_batch", MagicMock(side_effect=[cached(demure), cached(mob)]))
 
     settings = settings_for(tmp_path)
     result = run_pipeline(settings)
 
-    raw_manifest = json.loads(
-        (settings.data_raw_dir / cache_module.MANIFEST_FILENAME).read_text(encoding="utf-8")
-    )
+    raw_manifest = json.loads((settings.data_raw_dir / cache_module.MANIFEST_FILENAME).read_text(encoding="utf-8"))
     recorded = {entry["keyword"] for entry in raw_manifest["series"]}
     persisted = set(pd.read_parquet(result.series_path)["keyword"])
 
@@ -404,9 +385,7 @@ def test_a_cache_hit_is_recorded_as_a_cache_hit_in_the_raw_manifest(monkeypatch,
     run_pipeline(settings)
 
     assert fetch.call_count == 1
-    raw_manifest = json.loads(
-        (settings.data_raw_dir / cache_module.MANIFEST_FILENAME).read_text(encoding="utf-8")
-    )
+    raw_manifest = json.loads((settings.data_raw_dir / cache_module.MANIFEST_FILENAME).read_text(encoding="utf-8"))
     assert {entry["source"] for entry in raw_manifest["series"]} == {"cache"}
 
 
@@ -443,7 +422,5 @@ def test_fixture_mode_leaves_the_on_disk_cache_untouched(tmp_path):
     run_pipeline(settings)
 
     assert not (settings.data_raw_dir / "cache").exists()
-    raw_manifest = json.loads(
-        (settings.data_raw_dir / cache_module.MANIFEST_FILENAME).read_text(encoding="utf-8")
-    )
+    raw_manifest = json.loads((settings.data_raw_dir / cache_module.MANIFEST_FILENAME).read_text(encoding="utf-8"))
     assert {entry["source"] for entry in raw_manifest["series"]} == {"fixture"}

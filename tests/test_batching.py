@@ -28,6 +28,7 @@ def _cached(frame, keywords=None, source="network"):
         pytrends_version="4.9.2",
     )
 
+
 # A synthetic placeholder, deliberately not the real `Settings.anchor_keyword`
 # default — these tests exercise the rescaling math, not the anchor choice.
 ANCHOR = "anchor keyword"
@@ -95,12 +96,8 @@ def test_build_batches_rejects_capacity_below_one():
 def test_rescale_batches_uses_anchor_peak_ratio_on_overlapping_keyword():
     # Batch 0 is best-resolved for the anchor (peak 50); batch 1's anchor is
     # crushed to a peak of 25 by a dominant batchmate.
-    batch0 = pd.DataFrame(
-        {ANCHOR: [10, 50, 20], "kw ref": [5, 25, 10]}, index=_dates(3)
-    )
-    batch1 = pd.DataFrame(
-        {ANCHOR: [5, 25, 12], "kw other": [2, 25, 8]}, index=_dates(3)
-    )
+    batch0 = pd.DataFrame({ANCHOR: [10, 50, 20], "kw ref": [5, 25, 10]}, index=_dates(3))
+    batch1 = pd.DataFrame({ANCHOR: [5, 25, 12], "kw other": [2, 25, 8]}, index=_dates(3))
 
     rescaled = rescale_batches([batch0, batch1], ANCHOR)
 

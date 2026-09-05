@@ -1,8 +1,7 @@
 import pandas as pd
 import pytest
 
-from fashion_trends.ingest import fixtures
-from fashion_trends.ingest import pytrends_client
+from fashion_trends.ingest import fixtures, pytrends_client
 from fashion_trends.ingest.batching import collect_normalized_trends
 from fashion_trends.keywords import load_trends
 from fashion_trends.settings import Settings

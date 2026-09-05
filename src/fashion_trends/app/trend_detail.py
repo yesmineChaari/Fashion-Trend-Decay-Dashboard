@@ -16,8 +16,8 @@ from fashion_trends.app.overview import (
     NO_PEAK_DETECTED,
     format_decay_rate,
     format_flags,
-    format_peak_date,
     format_pct_dropped,
+    format_peak_date,
     format_weeks_to_half,
 )
 from fashion_trends.keywords import load_trends

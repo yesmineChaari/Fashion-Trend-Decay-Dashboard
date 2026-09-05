@@ -146,7 +146,7 @@ def _format_pull_date(pull_date: Any) -> str:
 
 
 def save_figure(
-    fig: "Figure",
+    fig: Figure,
     path: Path | str,
     *,
     pull_date: Any,

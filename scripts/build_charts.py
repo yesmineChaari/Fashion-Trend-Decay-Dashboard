@@ -44,11 +44,7 @@ def _parse_run_flags(argv: list[str]) -> tuple[tuple[str, ...], Path | None, str
     parser.add_argument("--format", type=str, default=DEFAULT_FORMAT, choices=list(SUPPORTED_FORMATS))
     parsed, _ = parser.parse_known_args(argv)
 
-    figures = (
-        tuple(name.strip() for name in parsed.figures.split(",") if name.strip())
-        if parsed.figures
-        else FIGURE_CHOICES
-    )
+    figures = tuple(name.strip() for name in parsed.figures.split(",") if name.strip()) if parsed.figures else FIGURE_CHOICES
     outdir = Path(parsed.outdir) if parsed.outdir else None
     return figures, outdir, parsed.format
 

@@ -45,9 +45,7 @@ Source = Literal["cache", "network", "fixture"]
 
 def _cache_key(keywords: list[str], timeframe: str, geo: str) -> str:
     """A stable identifier for a batch request, independent of keyword order."""
-    payload = json.dumps(
-        {"keywords": sorted(keywords), "timeframe": timeframe, "geo": geo}, sort_keys=True
-    )
+    payload = json.dumps({"keywords": sorted(keywords), "timeframe": timeframe, "geo": geo}, sort_keys=True)
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 

@@ -11,10 +11,11 @@ from __future__ import annotations
 import argparse
 import json
 import os
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 ENV_PREFIX = "FASHION_TRENDS_"
@@ -221,9 +222,7 @@ def load_settings(argv: list[str] | None = None) -> Settings:
     settings = replace(Settings(), **_env_overrides())
 
     parsed, _ = _build_arg_parser().parse_known_args(argv)
-    cli_overrides = {
-        name: value for name, _ in _FIELDS if (value := getattr(parsed, name)) is not None
-    }
+    cli_overrides = {name: value for name, _ in _FIELDS if (value := getattr(parsed, name)) is not None}
     if parsed.offline:
         cli_overrides["fixture_mode"] = True
     return replace(settings, **cli_overrides)

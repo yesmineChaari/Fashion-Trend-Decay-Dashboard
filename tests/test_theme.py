@@ -20,7 +20,6 @@ from fashion_trends.viz.theme import (
     save_figure,
 )
 
-
 # ---- category_style ----------------------------------------------------
 
 

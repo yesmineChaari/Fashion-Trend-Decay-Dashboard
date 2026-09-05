@@ -55,9 +55,7 @@ tile_col2.metric(
     f"{tiles['median_weeks_to_half']:.0f}" if tiles["median_weeks_to_half"] is not None else "n/a",
 )
 tile_col3.metric("Trends shown", len(filtered))
-st.caption(
-    " · ".join(f"{status_name}: {count}" for status_name, count in sorted(tiles["status_counts"].items()))
-)
+st.caption(" · ".join(f"{status_name}: {count}" for status_name, count in sorted(tiles["status_counts"].items())))
 
 st.dataframe(
     format_overview_table(filtered),

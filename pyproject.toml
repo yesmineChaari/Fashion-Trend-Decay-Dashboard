@@ -10,3 +10,17 @@ requires-python = ">=3.10"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.ruff]
+line-length = 130
+target-version = "py310"
+src = ["src", "scripts", "app", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "offline: never touches the network (the suite-wide default, enforced by tests/conftest.py's autouse socket guard)",
+]
