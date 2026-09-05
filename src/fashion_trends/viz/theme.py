@@ -171,5 +171,13 @@ def save_figure(
     footer = f"Source: {source}  ·  Pulled {_format_pull_date(pull_date)}  ·  Window: {timeframe}"
     fig.text(0.01, 0.01, footer, ha="left", va="bottom", fontsize=FOOTER_FONTSIZE, color=FOOTER_COLOR)
 
-    fig.savefig(path)
+    savefig_kwargs: dict[str, Any] = {}
+    if path.suffix.lower() == ".svg":
+        # Matplotlib's SVG writer stamps the current wall-clock date into the
+        # file's metadata, and salts every clip-path/gradient id with a random
+        # UUID generated fresh per process, unless told not to — either one
+        # would make two runs against unchanged data produce different bytes.
+        savefig_kwargs["metadata"] = {"Date": None}
+        matplotlib.rcParams["svg.hashsalt"] = "fashion-trends"
+    fig.savefig(path, **savefig_kwargs)
     return path
