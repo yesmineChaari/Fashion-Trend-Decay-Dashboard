@@ -50,8 +50,11 @@ def test_fetch_drops_partial_rows_and_returns_frame(monkeypatch, caplog):
     with caplog.at_level("INFO"):
         result = fetch_interest_over_time(["mob wife aesthetic"], "today 5-y", "US", SETTINGS)
 
+    # The flagged row goes, not just the flag column -- an in-progress week
+    # reads low and lands in the trailing window `current_value` averages.
     assert "isPartial" not in result.columns
-    assert list(result["mob wife aesthetic"]) == [10, 20]
+    assert list(result["mob wife aesthetic"]) == [10]
+    assert list(result.index) == [pd.Timestamp("2026-08-24")]
     assert "Dropping 1 trailing partial-week row" in caplog.text
     trend_req.build_payload.assert_called_once_with(
         ["mob wife aesthetic"], timeframe="today 5-y", geo="US"

@@ -81,16 +81,25 @@ def _drop_partial_rows(frame: pd.DataFrame, keywords: list[str]) -> pd.DataFrame
         raise NoDataError(f"Google Trends returned no data for {keywords!r}")
 
     if "isPartial" in frame.columns:
-        partial_count = int(pd.Series(frame["isPartial"]).astype(bool).sum())
-        if partial_count:
+        partial = pd.Series(frame["isPartial"]).astype(bool)
+        if partial.any():
             logger.info(
                 "Dropping %d trailing partial-week row(s) for %r — the most "
                 "recent week is usually incomplete and would otherwise "
                 "depress the current-interest value.",
-                partial_count,
+                int(partial.sum()),
                 keywords,
             )
-        frame = frame.drop(columns=["isPartial"])
+        # The rows go, not just the flag column. An in-progress week reads
+        # low for having only been half-observed, and it lands in exactly the
+        # trailing window `compute_pct_dropped` averages for `current_value` —
+        # so keeping it biases every "% dropped" in the run upward.
+        frame = frame.loc[~partial].drop(columns=["isPartial"])
+
+    if frame.empty:
+        raise NoDataError(
+            f"Google Trends returned only partial-week rows for {keywords!r}"
+        )
 
     return frame
 

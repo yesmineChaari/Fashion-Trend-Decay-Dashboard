@@ -70,9 +70,13 @@ window width used to smooth the series for peak detection) absorbs that
 noise while still describing where the trend stands now rather than months
 ago. Gap weeks inside that window are skipped, not counted as zero. The
 trailing partial week (the current, still-accumulating week of a live pull)
-is always excluded, whether by the caller having already dropped it (see
-`fashion_trends.metrics.smoothing.preprocess_series`) or because it simply
-isn't part of the completed weekly series yet.
+is always excluded: `fashion_trends.ingest.pytrends_client` drops every row
+Google Trends flags `isPartial` as the response comes in, and
+`fashion_trends.metrics.smoothing.preprocess_series` will drop them too if
+handed an unprocessed pull directly. That week reads low purely for having
+been half-observed, and it lands inside the very window averaged here — so
+keeping it would inflate every "% dropped" figure in a run rather than
+producing an obviously wrong number.
 
 `current_value` and the date of the last week folded into it
 (`current_window_end`) are recorded alongside `pct_dropped` so the number is
