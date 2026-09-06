@@ -9,9 +9,7 @@ from fashion_trends.settings import Settings
 
 
 def test_get_settings_ignores_process_argv(monkeypatch):
-    # Under `streamlit run app/streamlit_app.py --server.port 9000`, sys.argv
-    # holds Streamlit's own flags, not pipeline ones — get_settings must not
-    # let argparse choke on or misinterpret them.
+    # sys.argv under `streamlit run` holds Streamlit's own flags, not pipeline ones.
     monkeypatch.setattr("sys.argv", ["streamlit_app.py", "--server.port", "9000"])
 
     settings = get_settings()

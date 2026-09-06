@@ -1,19 +1,12 @@
 """Data shaping for the Overview page's ranked, filterable metrics table.
 
 Kept separate from `app/views/overview.py` so this logic is testable without a
-running Streamlit script — the same split `fashion_trends.app.data` and
-`fashion_trends.app.layout` already follow.
+running Streamlit script.
 
-A null metric here is never the same thing as a blank cell: `pre_peak`,
-`unknown`, and `still_above_half` are all real findings about a trend, not
-missing data, and `format_overview_table` renders each as the plain-language
-label a reader needs to tell those cases apart (see
-`fashion_trends.metrics.decay` and `fashion_trends.metrics.status` for why
-each one nulls what it nulls). That label is text sharing a column with
-formatted numbers, which does cost that column a fully numeric sort for the
-handful of rows carrying a label instead of a value — accepted deliberately,
-since a blank or a zero in a null metric's cell is the more misleading
-outcome of the two.
+A null metric is never the same as a blank cell: `pre_peak`, `unknown`, and
+`still_above_half` are real findings, not missing data, so
+`format_overview_table` renders each as a plain-language label instead of
+leaving the cell blank.
 """
 
 from __future__ import annotations
@@ -25,14 +18,11 @@ import pandas as pd
 from fashion_trends.metrics.decay import HALF_LIFE_CROSSED, HALF_LIFE_PRE_PEAK, HALF_LIFE_STILL_ABOVE
 from fashion_trends.metrics.status import STATUS_REVIVED
 
-# Sentinel filter values meaning "don't filter on this dimension" — kept
-# distinct from any real category or status string so a widget's default
-# selection can never collide with actual data.
+# Sentinel filter values meaning "don't filter on this dimension".
 ALL_CATEGORIES = "All categories"
 ALL_STATUSES = "All statuses"
 
-# Plain-language labels for a null metric — see the module docstring for why
-# these stand in for the cell rather than leaving it blank.
+# Plain-language labels for a null metric, see the module docstring.
 STILL_RISING = "still rising"
 NEVER_HALVED = "never fell below 50%"
 JUST_PEAKED = "just peaked"
@@ -60,11 +50,7 @@ OVERVIEW_COLUMN_LABELS = {
     "flags": "Caveats",
 }
 
-# Column-header help text: the inline affordance saying what each displayed
-# metric actually measures. Written for a reader, not a maintainer -- no
-# module paths, no function names, no parenthetical asides. Whoever wants the
-# formal definition of a column goes to `docs/methodology.md`, which names the
-# function behind every one of them.
+# Column-header help text, written for a reader: no module paths or function names.
 OVERVIEW_COLUMN_HELP = {
     "display_name": "The name this trend is listed under.",
     "category": "What kind of trend it is: an aesthetic, a garment, an accessory, or a way of styling.",
@@ -79,11 +65,7 @@ OVERVIEW_COLUMN_HELP = {
 
 
 def filter_metrics(metrics: pd.DataFrame, category: str, status: str) -> pd.DataFrame:
-    """`metrics` restricted to `category` and `status`, either of which may be "show all".
-
-    `category` and `status` are compared against `ALL_CATEGORIES`/`ALL_STATUSES`
-    respectively — passing either sentinel skips filtering on that dimension.
-    """
+    """`metrics` restricted to `category` and `status`, either of which may be "show all"."""
     filtered = metrics
     if category != ALL_CATEGORIES:
         filtered = filtered[filtered["category"] == category]
@@ -95,19 +77,9 @@ def filter_metrics(metrics: pd.DataFrame, category: str, status: str) -> pd.Data
 def summary_tiles(metrics: pd.DataFrame) -> dict[str, Any]:
     """Headline numbers for the top of the Overview page.
 
-    Both medians are taken over the trends that actually have the metric —
-    `pct_dropped` excludes pre-peak/no-peak trends by being null for them
-    already, and `weeks_to_half` is further restricted to `HALF_LIFE_CROSSED`
-    rows so a `still_above_half` trend's lack of a crossing doesn't get
-    averaged in as if it were a fast one. Either median is `None` when no row
-    qualifies, distinguishing "nothing to average" from "averages to zero".
-
-    `fastest_collapse` is the `(display_name, weeks)` of the quickest trend to
-    lose half its peak, or `None` when no trend in `metrics` crossed at all.
-    A median alone says how the set behaves without ever naming a trend, and
-    the single fastest death is the finding a reader actually repeats — the
-    same reason `fashion_trends.viz.decay_curves` draws the extremes bold
-    rather than only the middle of the distribution.
+    Medians are taken only over trends that have the metric; `None` when no
+    row qualifies. `fastest_collapse` is the `(display_name, weeks)` of the
+    quickest trend to lose half its peak, or `None` if none crossed.
     """
     pct_dropped = metrics["pct_dropped"].dropna()
     crossed = metrics.loc[metrics["time_to_half_status"] == HALF_LIFE_CROSSED].dropna(subset=["weeks_to_half"])
@@ -126,10 +98,7 @@ def summary_tiles(metrics: pd.DataFrame) -> dict[str, Any]:
 def format_peak_date(row: pd.Series) -> str:
     """One metrics row's `peak_date`, display-ready. Public: reused by `fashion_trends.app.trend_detail`.
 
-    Unlike the decay metrics below, `peak_date` is set even for a `pre_peak`
-    trend — the peak is real, only the decay measured *from* it doesn't
-    exist yet (see `fashion_trends.metrics.peaks`) — so a null here only
-    ever means no peak was found at all.
+    Set even for a `pre_peak` trend; null here means no peak was found at all.
     """
     if pd.notna(row["peak_date"]):
         return row["peak_date"].date().isoformat()
@@ -169,14 +138,8 @@ def format_weeks_to_half(row: pd.Series) -> str:
 def format_flags(row: pd.Series) -> str:
     """One metrics row's caveat flags, display-ready. Public: reused by `fashion_trends.app.trend_detail`.
 
-    A second peak is left out of the list for a `revived` row, which is every
-    row carrying one but a single shape: `fashion_trends.metrics.status`
-    assigns that label *because* a second peak was found, so listing it here
-    prints the Status column's own reason back at the reader as if it were an
-    extra caveat -- the repetition `status_explanation` avoids on the other
-    side of the same pairing. The one shape it still says something for is a
-    trend climbing past an earlier hump, labelled `pre_peak`, where nothing
-    else on the row mentions the hump at all.
+    A second peak is omitted for a `revived` row, since the Status column
+    already says why it's revived.
     """
     labels = []
     if row["low_resolution"]:
@@ -189,13 +152,9 @@ def format_flags(row: pd.Series) -> str:
 
 
 def format_overview_table(metrics: pd.DataFrame) -> pd.DataFrame:
-    """`metrics` reshaped into the Overview table's display columns.
+    """`metrics` reshaped into the Overview table's display columns, in `OVERVIEW_COLUMNS` order.
 
-    Every metric cell is a display-ready string: a formatted value where one
-    exists, otherwise the plain-language reason it doesn't (see the module
-    docstring). Returns `OVERVIEW_COLUMNS` in that order; empty input returns
-    an empty frame with the same columns rather than raising, so a caller
-    filtering down to nothing can render it directly.
+    Empty input returns an empty frame with the same columns rather than raising.
     """
     if metrics.empty:
         return pd.DataFrame(columns=OVERVIEW_COLUMNS)

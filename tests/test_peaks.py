@@ -23,8 +23,8 @@ def _detect(values, window=WINDOW, start="2026-01-04"):
     return detect_peak(_processed(values, window, start), window, RATIO, SPIKE, BOUNDARY, RISE)
 
 
-# A rise, a clear single peak, and a long decay — the shape every flag below is
-# defined against. Padded on both sides so the peak is nowhere near an edge.
+# A rise, a clear single peak, and a long decay, the shape every flag below
+# is defined against. Padded on both sides so the peak is nowhere near an edge.
 CLEAN_RISE_AND_FALL = [2, 3, 4, 5, 6, 10, 20, 40, 70, 95, 100, 80, 60, 45, 33, 25, 18, 13, 9, 6, 4, 3, 2, 2]
 
 
@@ -138,7 +138,7 @@ def test_a_revival_is_flagged_with_the_second_hump_located():
 
 
 def test_a_second_hump_below_the_ratio_is_not_a_second_peak():
-    # The revival only reaches about half the original peak — a small
+    # The revival only reaches about half the original peak, a small
     # aftershock, not a story a single decay number is hiding.
     values = [5, 20, 60, 95, 100, 70, 40, 20, 10, 8, 10, 18, 30, 45, 50, 44, 30, 18, 10, 6, 4, 3]
     result = _detect(values)
@@ -160,7 +160,7 @@ def test_a_broad_plateau_is_one_peak_not_two():
 
 
 def test_a_peak_in_the_first_weeks_is_flagged_as_at_the_boundary():
-    # The trend was already falling when the window opened — the real peak
+    # The trend was already falling when the window opened; the real peak
     # happened before the first week we can see.
     values = [100, 92, 80, 66, 52, 40, 30, 22, 16, 12, 9, 7, 5, 4, 3, 2]
     result = _detect(values)
@@ -295,7 +295,7 @@ def test_bag_charm_fixture_revival_is_flagged_as_a_second_peak():
 
 def test_near_zero_fixture_still_yields_a_peak_without_crashing():
     # A near-zero series has no meaningful shape, but peak detection must not
-    # be what fails on it — `low_resolution` is the flag that qualifies it.
+    # be what fails on it. `low_resolution` is the flag that qualifies it.
     result = _fixture_result("fixture_near_zero")
 
     assert result.peak_date is not None

@@ -1,17 +1,15 @@
 """Split trends into Google Trends batches and rescale them onto one axis.
 
 Google Trends accepts at most five keywords per request and scales each
-batch's values 0-100 relative to that batch's own maximum, so a "60" in one
-batch and a "60" in another are not comparable — the batches don't share an
-axis. Every batch built here carries a shared anchor keyword
-(`settings.anchor_keyword`); the ratio between the anchor's peak in a given
-batch and its peak in the reference batch is what puts that batch back on a
-common scale.
+batch's values 0-100 relative to that batch's own maximum, so raw values
+across batches aren't comparable. Every batch carries a shared anchor
+keyword (`settings.anchor_keyword`); the ratio between the anchor's peak in
+a given batch and in the reference batch puts that batch back on a common
+scale.
 
-The four headline decay metrics are each relative to a trend's own peak, so
-they don't need any of this — this module only matters for comparing trends
-to each other (the shared decay-curve chart) and for protecting low-volume
-trends from being quantized to noise by a batchmate that dominates them.
+The four headline decay metrics are relative to a trend's own peak, so they
+don't need this. It only matters for comparing trends to each other and for
+protecting low-volume trends from a dominant batchmate.
 """
 
 from __future__ import annotations
@@ -33,10 +31,8 @@ def build_batches(
     """Group `trends` into keyword lists for `fetch_interest_over_time`.
 
     Every batch starts with `anchor_keyword` plus up to
-    `max_batch_keywords - 1` trend keywords, keeping every request within
-    Google Trends' limit while guaranteeing a shared keyword to rescale
-    against later. A trend with `isolate=True` gets a batch to itself
-    (anchor + that one keyword) — see `Trend.isolate` for why.
+    `max_batch_keywords - 1` trend keywords. A trend with `isolate=True` gets
+    a batch to itself (anchor + that one keyword), see `Trend.isolate`.
     """
     batch_capacity = max_batch_keywords - 1
     if batch_capacity < 1:
@@ -61,21 +57,12 @@ def rescale_batches(
 ) -> list[pd.DataFrame]:
     """Rescale every batch in `batch_frames` onto one shared axis.
 
-    Each batch's own 0-100 scale is relative to that batch's maximum, so raw
-    values from two batches aren't comparable even when equal. Because every
-    batch shares `anchor_keyword`, the ratio between the anchor's peak in a
-    reference batch and its peak in each other batch is the factor that
-    converts that batch's values onto the reference batch's scale.
-
-    `reference_index` defaults to the batch where the anchor's raw peak is
-    highest — the batch where it was least crushed by a dominant batchmate,
-    and so the batch whose anchor reading carries the least quantization
-    noise to divide by. A batch containing an `isolate`-flagged trend (see
-    `Trend.isolate`) is the batch to avoid here, since that trend's whole
-    point is dominating everything else in its batch, the anchor included.
-
-    Returns new frames — `batch_frames` are left untouched so callers can
-    persist the raw pull alongside the rescaled one.
+    Since every batch shares `anchor_keyword`, the ratio between the
+    anchor's peak in a reference batch and in each other batch converts that
+    batch onto the reference batch's scale. `reference_index` defaults to
+    the batch where the anchor's raw peak is highest (least crushed by a
+    dominant batchmate). Returns new frames; `batch_frames` are left
+    untouched.
     """
     if not batch_frames:
         return []
@@ -88,7 +75,7 @@ def rescale_batches(
     if reference_peak <= 0:
         raise ValueError(
             f"anchor keyword {anchor_keyword!r} has a zero peak in the reference batch "
-            f"(index {reference_index}) — cannot compute a rescaling ratio from it"
+            f"(index {reference_index}). Cannot compute a rescaling ratio from it"
         )
 
     rescaled = []
@@ -96,7 +83,7 @@ def rescale_batches(
         if batch_peak <= 0:
             raise ValueError(
                 f"anchor keyword {anchor_keyword!r} has a zero peak in one of the batches "
-                "being rescaled — check the batch actually included the anchor keyword"
+                "being rescaled. Check the batch actually included the anchor keyword"
             )
         ratio = reference_peak / batch_peak
         rescaled.append(frame.mul(ratio))
@@ -105,13 +92,7 @@ def rescale_batches(
 
 
 def is_low_resolution(rescaled_series: pd.Series, threshold: float) -> bool:
-    """True if `rescaled_series` never clears the noise floor after rescaling.
-
-    A series whose tallest point sits below `threshold` on the shared
-    rescaled axis is mostly integer quantization noise, not a measured
-    shape — its decay metrics would be reporting confidence the data
-    doesn't have.
-    """
+    """True if `rescaled_series` never clears the noise floor after rescaling."""
     return bool(rescaled_series.max() < threshold)
 
 
@@ -143,11 +124,10 @@ def collect_normalized_trends(
 ) -> CollectionResult:
     """Fetch every batch for `trends` and rescale them onto one shared axis.
 
-    Each batch goes through the on-disk raw cache (`fashion_trends.ingest.cache`),
-    so a repeat run within `settings.cache_ttl_days` makes no network requests;
-    `refresh=True` forces every batch to re-pull. This writes the raw pulls to
-    the cache and the provenance manifest as a side effect, but persisting the
-    rescaled/processed data is still the caller's job.
+    Goes through the on-disk raw cache, so a repeat run within
+    `settings.cache_ttl_days` makes no network requests; `refresh=True`
+    forces a re-pull. Writes the cache and provenance manifest as a side
+    effect; persisting the rescaled/processed data is still the caller's job.
     """
     batches = build_batches(trends, settings.anchor_keyword, settings.max_batch_keywords)
     cached_batches = [fetch_batch(batch, settings.timeframe, settings.geo, settings, refresh=refresh) for batch in batches]

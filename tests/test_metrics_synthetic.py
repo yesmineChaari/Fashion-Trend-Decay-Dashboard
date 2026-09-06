@@ -1,33 +1,21 @@
 """The metrics engine against synthetic series with hand-computed answers.
 
-Real Google Trends data cannot serve as a fixed oracle: it is sampled, so
-re-running the same request returns slightly different numbers, and nobody
-knows what the "right" peak date for `bag charm` is anyway. The series in
-this module are constructed instead, from closed forms whose every expected
-metric can be derived on paper — and the expectations below are written as
-those derivations rather than as numbers copied out of a passing run, so a
-change in the engine's behaviour fails here instead of quietly redefining
-what the metrics mean.
+Real Google Trends data can't serve as a fixed oracle since it's sampled, so
+the series here are constructed from closed forms whose every expected
+metric can be derived on paper, and expectations are written as those
+derivations rather than numbers copied from a passing run.
 
-Two facts about the smoothing (`fashion_trends.metrics.smoothing`) underpin
-every derivation here, both verified by their own tests at the top of this
-file so a pandas change surfaces as a failure that names the cause:
+Two facts about the smoothing underpin every derivation, both verified by
+their own tests at the top of this file:
 
-* With `window=4, center=True`, position `t`'s window is
-  `raw[t - 2 : t + 2]` — the two weeks before `t`, `t` itself, and the one
-  after. So `smooth[t] = mean(raw[t-2], raw[t-1], raw[t], raw[t+1])`, and
-  every `peak_value` below is one such four-value mean.
-* Consequently `smooth[t+1] - smooth[t] = (raw[t+2] - raw[t-2]) / 4`. That
-  identity is what fixes each fixture's peak *week*: the smoothed maximum
-  sits on the raw apex only when the shape rises more gently than it falls,
-  which is why every rise-then-fall fixture here is built that way and why
-  a steeper rise would move the detected peak a week later.
+* With `window=4, center=True`, `smooth[t] = mean(raw[t-2], raw[t-1], raw[t], raw[t+1])`.
+* Consequently `smooth[t+1] - smooth[t] = (raw[t+2] - raw[t-2]) / 4`, which
+  is why every rise-then-fall fixture here rises more gently than it falls
+  (otherwise the detected peak week would shift).
 
-Each shape is named for the case from the metrics tickets it exists to pin
-down, and the null-returning cases are asserted to be null rather than zero —
-"no peak found yet", "a fit too short to trust" and "never crossed half its
-peak" all mean something, and a 0 in any of their places would be a
-different, false claim.
+Null-returning cases are asserted to be null rather than zero, since each
+null means something distinct ("no peak found yet", "fit too short to
+trust", "never crossed half its peak").
 """
 
 import math
@@ -65,12 +53,7 @@ def week(position: int) -> pd.Timestamp:
 
 
 def smoothed_at(values, position: int) -> float:
-    """`smooth[position]` derived directly from the centred-window definition.
-
-    Deliberately *not* a call into `fashion_trends.metrics.smoothing` — this
-    is the independent side of the oracle, so it restates the four-value mean
-    from the module docstring rather than reusing the code under test.
-    """
+    """`smooth[position]` derived directly from the centred-window definition, independent of the code under test."""
     lo = max(0, position - WINDOW // 2)
     hi = position + WINDOW // 2
     return float(np.mean(np.asarray(values, dtype=float)[lo:hi]))
@@ -79,9 +62,8 @@ def smoothed_at(values, position: int) -> float:
 def metrics_for(values, low_resolution: bool = False) -> pd.Series:
     """Run `compute_all` over one synthetic series and return its single row.
 
-    Builds the `series.parquet`-shaped input the pipeline builds — same
-    `preprocess_series` call, same columns — so what is under test is the
-    whole engine end to end rather than one stage of it in isolation.
+    Builds the same `series.parquet`-shaped input the real pipeline builds,
+    so the whole engine is under test end to end.
     """
     raw = pd.Series(
         np.asarray(values, dtype=float),
@@ -110,9 +92,8 @@ def metrics_for(values, low_resolution: bool = False) -> pd.Series:
 def ramp(start: float, stop: float, weeks: int) -> np.ndarray:
     """`weeks` evenly spaced values walking from just after `start` to `stop`.
 
-    `start` itself is excluded, so ramps concatenate without repeating their
-    join point — `[a] + ramp(a, b, n) + ramp(b, c, m)` is one continuous
-    piecewise-linear shape.
+    `start` is excluded, so ramps concatenate without repeating their join
+    point: `[a] + ramp(a, b, n) + ramp(b, c, m)` is one continuous shape.
     """
     return np.linspace(start, stop, weeks + 1)[1:]
 

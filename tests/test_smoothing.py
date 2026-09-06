@@ -52,9 +52,8 @@ def test_normalize_weekly_index_handles_fewer_than_two_points():
 def test_smooth_series_centred_window_lags_far_less_than_a_trailing_window():
     # A realistic rise-then-decay shape. Pandas' centred window for an even
     # `window` isn't perfectly symmetric (it leans one point toward the
-    # past), so it can nudge the reported peak a week late — but nowhere
-    # near as far as a fully trailing window, which looks entirely backward
-    # and reports the peak `window // 2`+ weeks late.
+    # past), so it can nudge the reported peak a week late, but nowhere near
+    # as far as a fully trailing window, which reports it `window // 2`+ weeks late.
     values = [5, 12, 28, 55, 90, 60, 35, 18, 9, 5]
     series = pd.Series(values, index=_weekly_dates(len(values)))
     peak_date = series.idxmax()

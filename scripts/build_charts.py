@@ -4,17 +4,16 @@
     python scripts/build_charts.py [--figures decay,ranking,decline]
                                     [--outdir PATH] [--format png|svg]
 
-Reads only `data/processed/*.parquet` and makes no network calls — if that
+Reads only `data/processed/*.parquet` and makes no network calls. If that
 data is missing, run `scripts/refresh_data.py` first.
 
 `--figures`, `--outdir`, and `--format` are run-specific flags handled here;
-every other flag (cache-ttl-days, ...) is a `Settings` field and passed
-straight through to `fashion_trends.settings.load_settings` — see that module
-for the full list.
+every other flag (cache-ttl-days, ...) is a `Settings` field passed straight
+through to `fashion_trends.settings.load_settings`.
 
 Exits non-zero if the processed data is missing or an unknown `--figures`
 name is given. A stale `data_pull_date` (older than the cache TTL) only
-prints a warning to stderr — building slightly-stale charts is still useful,
+prints a warning to stderr; building slightly-stale charts is still useful,
 it just should not be mistaken for current.
 """
 

@@ -1,4 +1,4 @@
-"""Thin wrapper around pytrends — the only module allowed to import it.
+"""Thin wrapper around pytrends, the only module allowed to import it.
 
 Retry/backoff, the polite inter-request delay, and typed error handling all
 live here so callers (metrics, viz, the dashboard's live search) never touch
@@ -59,8 +59,7 @@ def _get_client() -> TrendReq:
 
 
 def _throttle(request_delay_seconds: float) -> None:
-    """Block until at least `request_delay_seconds` have passed since the
-    last request this process made, regardless of which keyword it was for."""
+    """Block until at least `request_delay_seconds` have passed since this process's last request."""
     global _last_request_at
     now = time.monotonic()
     if _last_request_at is not None:
@@ -84,16 +83,14 @@ def _drop_partial_rows(frame: pd.DataFrame, keywords: list[str]) -> pd.DataFrame
         partial = pd.Series(frame["isPartial"]).astype(bool)
         if partial.any():
             logger.info(
-                "Dropping %d trailing partial-week row(s) for %r — the most "
+                "Dropping %d trailing partial-week row(s) for %r. The most "
                 "recent week is usually incomplete and would otherwise "
                 "depress the current-interest value.",
                 int(partial.sum()),
                 keywords,
             )
-        # The rows go, not just the flag column. An in-progress week reads
-        # low for having only been half-observed, and it lands in exactly the
-        # trailing window `compute_pct_dropped` averages for `current_value` —
-        # so keeping it biases every "% dropped" in the run upward.
+        # The rows go, not just the flag column: an in-progress week would
+        # otherwise bias `compute_pct_dropped`'s trailing-window average.
         frame = frame.loc[~partial].drop(columns=["isPartial"])
 
     if frame.empty:
@@ -110,14 +107,9 @@ def fetch_interest_over_time(
 ) -> pd.DataFrame:
     """Fetch Google Trends interest-over-time for `keywords`.
 
-    Retries on HTTP 429 and on transient network errors with exponential
-    backoff and jitter, up to `settings.max_retries` extra attempts, and
-    waits `settings.request_delay_seconds` between consecutive requests to
-    Google Trends (this call included).
-
-    Raises `RateLimitedError` if 429s persist past `max_retries`,
-    `TransportError` for other request or persistent network failures, and
-    `NoDataError` if the response has no rows (e.g. an unknown keyword).
+    Retries on HTTP 429 and transient network errors with exponential
+    backoff and jitter, up to `settings.max_retries` extra attempts. Raises
+    `RateLimitedError`, `TransportError`, or `NoDataError` (no rows returned).
     """
     settings = settings or load_settings([])
     client = _get_client()

@@ -24,11 +24,9 @@ class Trend:
     display_name: str
     category: str
     notes: str
-    # True for a trend whose peak dominates the rest of the catalog by an
-    # order of magnitude (see docs/trend-selection.md's normalisation
-    # section) — it must be fetched in a batch of its own, alongside only
-    # the anchor keyword, or it crushes any smaller keyword sharing the
-    # request toward zero.
+    # True for a trend whose peak dominates the catalog by an order of
+    # magnitude; must be fetched in a batch of its own with only the anchor
+    # keyword, or it crushes any smaller keyword sharing the request.
     isolate: bool = False
 
 

@@ -204,8 +204,7 @@ def test_format_overview_table_labels_pre_peak_trend_as_still_rising(metrics):
     table = format_overview_table(metrics)
     row = table[metrics["trend_id"].values == "rising"].iloc[0]
 
-    # peak_date is real even pre-peak (see fashion_trends.metrics.peaks) —
-    # only the metrics measured *from* that peak are still rising.
+    # peak_date is real even pre-peak; only the metrics measured from it are still rising.
     assert row["peak_date"] != NO_PEAK_DETECTED
     assert row["pct_dropped"] == STILL_RISING
     assert row["decay_rate_linear"] == STILL_RISING

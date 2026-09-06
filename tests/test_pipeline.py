@@ -101,8 +101,7 @@ def test_run_pipeline_persists_series_and_metrics(monkeypatch, tmp_path):
     # carries the peak its decay metrics will be measured against.
     assert metrics["peak_date"].notna().all()
     # With only two pulled weeks, a centred 4-week smoothing window averages
-    # both into an identical value for each trend — the "peak" and "current"
-    # windows land on the same number, so % dropped is a deterministic 0.
+    # both into an identical value for each trend, so % dropped is a deterministic 0.
     assert (metrics["pct_dropped"] == 0.0).all()
     # Two weeks is far too short a post-peak segment to fit a decay constant
     # to, so the fit columns come back null rather than extrapolating one.

@@ -1,26 +1,16 @@
 """The two ranking figures: drop from peak, and time to 50% decline.
 
-Both charts rank trends against each other, which is exactly where a peak
-that can't be trusted, or a metric that was never computed, does the most
-damage: a silently-dropped row just quietly changes the ranking of everyone
-else, and a reader has no way to tell the difference between "this trend was
-excluded" and "this trend simply ranked last." Every row of `metrics` ends up
-somewhere in each figure -- as a bar, or named in a caption explaining why it
-isn't one -- so a reader is never left to wonder what happened to a trend
-they expected to see.
+Every row of `metrics` ends up somewhere in each figure, as a bar or named in
+a caption explaining why it isn't one, so a reader is never left to wonder
+what happened to a trend they expected to see.
 
-**Drop ranking** (`plot_drop_ranking`) excludes `pre_peak` trends -- there is
-no drop to rank yet -- and any trend whose `pct_dropped` still came back null
-for another reason (no usable peak at all, or a peak measured at zero). Both
-exclusions are named in the figure's caption rather than left unexplained.
+**Drop ranking** (`plot_drop_ranking`) excludes `pre_peak` trends and any
+trend whose `pct_dropped` came back null for another reason, both named in
+the caption.
 
-**Time to decline** (`plot_time_to_decline`) has four possible
-`time_to_half_status` values, and all four are accounted for: `crossed`
-trends are the ranked bars proper, `still_above_half` trends are drawn in
-their own shaded, separately-labelled block below the ranking rather than
-omitted -- a trend that never gave up half its peak is the interesting
-counterexample the chart exists to surface, not a gap in it -- and
-`pre_peak`/`unknown` trends are named in the caption.
+**Time to decline** (`plot_time_to_decline`) draws `crossed` trends as the
+ranked bars, `still_above_half` trends in their own shaded block below, and
+names `pre_peak`/`unknown` trends in the caption.
 """
 
 from __future__ import annotations
@@ -66,9 +56,7 @@ CAPTION_COLOR = "#6B645C"
 VALUE_LABEL_COLOR = "#1F1C1A"
 
 
-# Fixed legend order for the drop ranking's status swatches -- `pre_peak` and
-# `unknown` never reach that chart's bars (see the module docstring), so they
-# have no entry here.
+# Fixed legend order for the drop ranking's status swatches.
 _STATUS_LEGEND_ORDER = (STATUS_COLLAPSED, STATUS_DECLINING, STATUS_STABILIZED, STATUS_REVIVED)
 
 
@@ -77,16 +65,10 @@ def _figure_height(n_bars: int) -> float:
 
 
 def _peak_label(display_name: str, peak_date: pd.Timestamp | None) -> str:
-    """A y-tick label naming a trend and, if known, the year and month it peaked.
-
-    A bare "dropped 85%" means something different for a 2021 peak than a
-    2025 one (see the module docstring), so every bar carries its own peak
-    date rather than leaving it to a shared axis or a footer someone could
-    miss.
-    """
+    """A y-tick label naming a trend and, if known, the year and month it peaked."""
     if pd.isna(peak_date):
         return display_name
-    return f"{display_name} — peak {peak_date:%b %Y}"
+    return f"{display_name}, peak {peak_date:%b %Y}"
 
 
 # ---- drop ranking ----------------------------------------------------
@@ -95,9 +77,8 @@ def _peak_label(display_name: str, peak_date: pd.Timestamp | None) -> str:
 def build_drop_ranking_frame(metrics: pd.DataFrame) -> pd.DataFrame:
     """Metrics rows rankable by `pct_dropped`, sorted descending (worst first).
 
-    Excludes `pre_peak` trends (no drop to rank yet) and any other trend
-    whose `pct_dropped` is null -- a peak that could not be found at all, or
-    one measured at zero. See `drop_ranking_caption` for surfacing both.
+    Excludes `pre_peak` trends and any other trend whose `pct_dropped` is
+    null. See `drop_ranking_caption`.
     """
     rankable = metrics[~metrics["pre_peak"] & metrics["pct_dropped"].notna()]
     return rankable.sort_values("pct_dropped", ascending=False)
@@ -123,8 +104,7 @@ def drop_ranking_caption(metrics: pd.DataFrame) -> str:
 def plot_drop_ranking(metrics: pd.DataFrame) -> Figure:
     """Build the ranked % drop chart. See the module docstring."""
     apply_theme()
-    # Reversed so the biggest drop -- first in the descending ranking -- lands
-    # at the top of the plot: `barh` stacks bars bottom-up in plotting order.
+    # Reversed so the biggest drop lands at the top: `barh` stacks bottom-up.
     ranked = build_drop_ranking_frame(metrics).iloc[::-1].reset_index(drop=True)
 
     fig, ax = plt.subplots(figsize=(FIGURE_WIDTH, _figure_height(len(ranked))))
@@ -161,13 +141,7 @@ def plot_drop_ranking(metrics: pd.DataFrame) -> Figure:
 
 
 def save_drop_ranking_figure(metrics: pd.DataFrame, settings: Settings | None = None) -> Path:
-    """Build and save the drop ranking chart to `outputs/figures/drop_ranking.png`.
-
-    `pull_date` and `timeframe` for `save_figure`'s footer come from
-    `metrics`'s own provenance columns -- see
-    `fashion_trends.viz.decay_curves.save_decay_curves_figure`, which does
-    the same for the same reason.
-    """
+    """Build and save the drop ranking chart to `outputs/figures/drop_ranking.png`."""
     settings = settings or Settings()
     fig = plot_drop_ranking(metrics)
     pull_date = metrics["data_pull_date"].iloc[0]
@@ -181,11 +155,9 @@ def save_drop_ranking_figure(metrics: pd.DataFrame, settings: Settings | None = 
 def build_time_to_decline_frames(metrics: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     """`(crossed, still_above)` metrics rows for the time-to-decline chart.
 
-    `crossed` is sorted ascending by `weeks_to_half` -- fastest deaths first.
-    `still_above` (trends that never fell below half their peak) is sorted
-    descending by `weeks_since_peak`, so the longest-surviving trend leads
-    its own block. Neither frame includes `pre_peak` or `unknown` trends --
-    see `time_to_decline_caption` for surfacing those.
+    `crossed` is sorted ascending by `weeks_to_half`. `still_above` is sorted
+    descending by `weeks_since_peak`. Neither includes `pre_peak`/`unknown`
+    trends, see `time_to_decline_caption`.
     """
     crossed = metrics[metrics["time_to_half_status"] == HALF_LIFE_CROSSED]
     crossed = crossed.sort_values("weeks_to_half", ascending=True)
@@ -231,7 +203,7 @@ def plot_time_to_decline(metrics: pd.DataFrame) -> Figure:
         ax.text(
             0.01,
             band_top - 0.1,
-            "Never dropped below half their peak (as of pull date) — shown separately, not omitted",
+            "Never dropped below half their peak (as of pull date), shown separately, not omitted",
             transform=ax.get_yaxis_transform(),
             ha="left",
             va="top",
@@ -257,9 +229,7 @@ def plot_time_to_decline(metrics: pd.DataFrame) -> Figure:
 
         ax.axhline(band_top, color="#333333", linewidth=0.8, linestyle="--", zorder=1)
 
-    # Reversed so the fastest death -- first in the ascending sort -- lands at
-    # the top of its section, matching `plot_drop_ranking`'s "biggest at the
-    # top" convention.
+    # Reversed so the fastest death lands at the top of its section.
     for _, row in crossed.iloc[::-1].iterrows():
         color = status_style(row["status"])
         ax.barh(y, row["weeks_to_half"], color=color, height=BAR_HEIGHT, zorder=2)
@@ -289,13 +259,7 @@ def plot_time_to_decline(metrics: pd.DataFrame) -> Figure:
 
 
 def save_time_to_decline_figure(metrics: pd.DataFrame, settings: Settings | None = None) -> Path:
-    """Build and save the time-to-decline chart to `outputs/figures/time_to_decline.png`.
-
-    `pull_date` and `timeframe` for `save_figure`'s footer come from
-    `metrics`'s own provenance columns -- see
-    `fashion_trends.viz.decay_curves.save_decay_curves_figure`, which does
-    the same for the same reason.
-    """
+    """Build and save the time-to-decline chart to `outputs/figures/time_to_decline.png`."""
     settings = settings or Settings()
     fig = plot_time_to_decline(metrics)
     pull_date = metrics["data_pull_date"].iloc[0]

@@ -1,14 +1,7 @@
-"""Overview page: the headline numbers, then everything else behind tabs.
+"""Overview page: filter row, four headline tiles, then the catalog-wide charts and table, one per tab.
 
-The landing view. It answers "how do these trends die, in general" before
-"what happened to this one": a filter row, four headline tiles, then the
-three catalog-wide figures and the full table, one per tab. Tabs rather than
-a stacked page — all four are views of the same filtered set, and stacking
-them made a page nobody could take in at once.
-
-All the shaping logic lives in `fashion_trends.app.overview` and the chart
-copy in `fashion_trends.app.explainers`, so this page only wires widgets to
-them.
+Shaping logic lives in `fashion_trends.app.overview`; chart copy in
+`fashion_trends.app.explainers`. This page only wires widgets to them.
 """
 
 from __future__ import annotations

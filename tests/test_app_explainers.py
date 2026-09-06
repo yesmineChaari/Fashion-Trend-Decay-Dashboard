@@ -27,7 +27,7 @@ def _keys_used_by_pages():
 def test_every_chart_rendered_by_a_page_has_an_explainer():
     used = _keys_used_by_pages()
 
-    assert used, f"no render_explainer calls found under {VIEWS_DIR} — the scrape regex has gone stale"
+    assert used, f"no render_explainer calls found under {VIEWS_DIR}. The scrape regex has gone stale"
     assert used <= set(CHART_EXPLAINERS)
 
 

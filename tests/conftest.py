@@ -1,19 +1,9 @@
 """Suite-wide guarantee that no test reaches the network.
 
-Every ingestion test in this suite is written against a mock, a recorded
-fixture, or the on-disk cache — but "written against" is not the same as
-"provably didn't call out". A test that silently starts hitting Google
-Trends would be slow, flaky, subject to rate limiting, and worst of all
-would pass or fail depending on what Google returned that day, quietly
-turning a deterministic assertion into a sampled one.
-
-So the socket layer is closed for the duration of every test and a real
-connection attempt raises `NetworkAccessDuringTestError` instead: the
-acceptance criterion "a network call attempted during tests is a test
-failure" is enforced here rather than trusted. Loopback stays open, since
-blocking it would break unrelated local machinery (a debugger, a
-multiprocessing pipe) without protecting anything — nothing about Google
-Trends is reachable at 127.0.0.1.
+The socket layer is closed for the duration of every test and a real
+connection attempt raises `NetworkAccessDuringTestError` instead, so "no
+test calls the network" is enforced rather than trusted. Loopback stays
+open since nothing about Google Trends is reachable at 127.0.0.1.
 """
 
 import socket
@@ -28,11 +18,7 @@ class NetworkAccessDuringTestError(RuntimeError):
 
 
 def _is_loopback(address) -> bool:
-    """True for an address this guard lets through.
-
-    Non-inet families (AF_UNIX and friends) are allowed: they can't reach
-    Google Trends, and the address isn't a `(host, port)` tuple to inspect.
-    """
+    """True for an address this guard lets through. Non-inet families (AF_UNIX etc.) are always allowed."""
     if not isinstance(address, tuple) or not address:
         return True
     host = address[0]

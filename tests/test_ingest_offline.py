@@ -1,19 +1,11 @@
 """Ingestion and pipeline behaviour verified without ever touching the endpoint.
 
-`tests/conftest.py` closes the socket layer for every test in the suite, so
-"this runs offline" is enforced rather than assumed — the first test here
-proves the guard is actually armed. Everything below it exercises the real
-ingestion code against mocked responses, recorded fixtures, or the on-disk
-cache: what is under test is the layer's own behaviour (batching, rescaling,
-caching, retry, partial-failure tolerance, manifest provenance), none of
-which needs Google Trends to be reachable to be checked.
-
-The per-unit behaviours already have close-up tests in `test_cache.py`,
-`test_batching.py`, `test_pytrends_client.py` and `test_pipeline.py`. What
-this file adds is the seams between them — a full catalog going through the
-real batch size, a rescaling ratio surviving all the way into
-`series.parquet`, a partial failure reaching the manifest a reader will
-actually consult, and the trailing in-progress week never arriving at all.
+The first test proves `tests/conftest.py`'s socket-closing guard is actually
+armed. What this file adds beyond the per-unit tests in `test_cache.py`,
+`test_batching.py`, `test_pytrends_client.py`, and `test_pipeline.py` is the
+seams between them: a full catalog through the real batch size, a rescaling
+ratio surviving into `series.parquet`, a partial failure reaching the
+manifest, and the trailing in-progress week never arriving at all.
 """
 
 import json

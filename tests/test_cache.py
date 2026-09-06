@@ -30,8 +30,7 @@ def test_fetch_batch_misses_then_hits_cache_with_no_network(monkeypatch, tmp_pat
     assert first.source == "network"
     assert fetch.call_count == 1
 
-    # A network call on the second, identical request would fail the test —
-    # this is the "second consecutive run makes zero network requests" case.
+    # A network call on the second, identical request would fail the test.
     fetch.side_effect = AssertionError("network should not be called on a cache hit")
     second = fetch_batch(["haute couture", "mob wife"], "today 5-y", "US", settings)
 

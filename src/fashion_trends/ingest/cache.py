@@ -2,23 +2,19 @@
 where every pulled value came from.
 
 Google Trends samples its data, so re-running the same request can return
-slightly different numbers — without a cache, results aren't reproducible
-and every re-run burns quota toward a 429. Each batch response (the set of
-keywords sent together in one `fetch_interest_over_time` call) is cached as
-a Parquet file keyed by a hash of its `(keywords, timeframe, geo)`, alongside
-a JSON side-car recording its fetch timestamp. A cache hit within
-`settings.cache_ttl_days` needs no network access at all; `refresh=True`
-(or a stale/missing entry) falls through to the network and refreshes the
-cache.
+slightly different numbers; without a cache, results aren't reproducible
+and every re-run burns quota. Each batch response is cached as a Parquet
+file keyed by a hash of its `(keywords, timeframe, geo)`, alongside a JSON
+side-car recording its fetch timestamp. A cache hit within
+`settings.cache_ttl_days` needs no network access; `refresh=True` (or a
+stale/missing entry) falls through to the network.
 
-`settings.fixture_mode` bypasses both the network and the on-disk cache
-entirely, serving from the committed `tests/fixtures/` snapshot instead
-(see `fashion_trends.ingest.fixtures`) — batches are labelled `source:
-"fixture"` in the manifest so that provenance stays honest.
+`settings.fixture_mode` bypasses both, serving from the committed
+`tests/fixtures/` snapshot instead, labelled `source: "fixture"` in the
+manifest.
 
-`write_raw_manifest` then records one entry per keyword actually pulled —
-whether served from cache or freshly fetched — so any number downstream
-(a chart, a dashboard figure) can be traced back to a pull date.
+`write_raw_manifest` records one entry per keyword actually pulled, so any
+number downstream can be traced back to a pull date.
 """
 
 from __future__ import annotations
@@ -55,13 +51,7 @@ def _entry_paths(data_raw_dir: Path, key: str) -> tuple[Path, Path]:
 
 
 def _pytrends_version() -> str:
-    """The installed pytrends version, read from package metadata.
-
-    Deliberately reads this via `importlib.metadata` rather than importing
-    the package itself — `pytrends_client.py` is the only module allowed to
-    touch it (see its docstring and
-    `tests/test_pytrends_client.py::test_no_other_module_imports_pytrends`).
-    """
+    """The installed pytrends version, read from package metadata (not imported directly)."""
     return _package_version("pytrends")
 
 
@@ -125,15 +115,10 @@ def fetch_batch(
 ) -> CachedBatch:
     """Fetch one Google Trends batch, serving from the on-disk cache when possible.
 
-    A cache hit — an entry fetched within `settings.cache_ttl_days` — makes
-    no network request at all. `refresh=True`, a missing entry, or a stale
-    one all fall through to `fetch_interest_over_time` and (re)write the
-    cache entry.
-
-    `settings.fixture_mode` takes precedence over all of the above: it never
-    touches the network or the on-disk cache, serving `keywords` from the
-    committed fixture snapshot instead (`refresh` is ignored in this mode —
-    there's nothing to refresh against).
+    A cache hit within `settings.cache_ttl_days` makes no network request.
+    `refresh=True`, a missing entry, or a stale one fall through to
+    `fetch_interest_over_time`. `settings.fixture_mode` takes precedence over
+    all of this, serving from the fixture snapshot instead.
     """
     if settings.fixture_mode:
         try:
@@ -188,12 +173,7 @@ def write_raw_manifest(
     batches: list[CachedBatch],
     path: Path | str | None = None,
 ) -> Path:
-    """Write `data/raw/manifest.json`, recording per-keyword pull provenance.
-
-    One entry per keyword actually present in `batches` — cache hits and
-    fresh network pulls alike — so every number downstream can be traced
-    back to a fetch date and to whether it came from cache or the network.
-    """
+    """Write `data/raw/manifest.json`, recording per-keyword pull provenance for every keyword in `batches`."""
     path = Path(path) if path is not None else settings.data_raw_dir / MANIFEST_FILENAME
 
     series = [

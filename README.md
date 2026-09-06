@@ -79,9 +79,6 @@ Both run cleanly on a clean checkout. Lint and format are configured under
 `[tool.pytest.ini_options]` in the same file — every test runs offline by
 default (see `tests/conftest.py`'s network guard).
 
-Optionally, `pip install pre-commit && pre-commit install` runs `lint` and
-`test` automatically before each commit (`.pre-commit-config.yaml`).
-
 ## Project layout
 
 ```

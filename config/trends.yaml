@@ -8,8 +8,8 @@
 #   notes:        why this keyword was chosen (editorial judgement, kept visible)
 #   isolate:      optional, default false. true means this keyword's peak dominates
 #                 the rest of the catalog by an order of magnitude and it must be
-#                 fetched in a batch of its own (with only the anchor keyword) —
-#                 see fashion_trends.ingest.batching and the normalisation section
+#                 fetched in a batch of its own (with only the anchor keyword).
+#                 See fashion_trends.ingest.batching and the normalisation section
 #                 of docs/trend-selection.md.
 #
 # Every keyword below was probed against live Google Trends over
@@ -27,7 +27,7 @@
   keyword: "demure"
   display_name: "Very demure"
   category: styling
-  notes: "The sharpest decay available. Essentially zero searches before August 2024, peaks 2024-08-18, and is back to 1% of peak by 2025. Highest absolute volume of any entry — roughly 130x the mob wife peak — so it must never share a Trends batch with a smaller keyword."
+  notes: "The sharpest decay available. Essentially zero searches before August 2024, peaks 2024-08-18, and is back to 1% of peak by 2025. Highest absolute volume of any entry, roughly 130x the mob wife peak, so it must never share a Trends batch with a smaller keyword."
   isolate: true
 
 - id: labubu
@@ -53,7 +53,7 @@
   keyword: "mocha mousse"
   display_name: "Mocha Mousse"
   category: styling
-  notes: "Colour-of-the-year fad with a known trigger date. Peaks 2024-12-01 on the Pantone announcement, halves in 2025, ~14% of peak by 2026 — a calendar-driven decay to compare against organic ones."
+  notes: "Colour-of-the-year fad with a known trigger date. Peaks 2024-12-01 on the Pantone announcement, halves in 2025, ~14% of peak by 2026, a calendar-driven decay to compare against organic ones."
 
 - id: coquette
   keyword: "coquette aesthetic"
@@ -71,7 +71,7 @@
   keyword: "underconsumption"
   display_name: "Underconsumption core"
   category: aesthetic
-  notes: "Anti-trend trend. Peaks 2024-12-29, holds through 2025, then halves in 2026 — a slower decay than the aesthetics it was reacting against."
+  notes: "Anti-trend trend. Peaks 2024-12-29, holds through 2025, then halves in 2026, a slower decay than the aesthetics it was reacting against."
 
 - id: bag_charm
   keyword: "bag charm"
@@ -89,7 +89,7 @@
   keyword: "coastal grandmother"
   display_name: "Coastal grandmother"
   category: aesthetic
-  notes: "One-summer microtrend. Peaks 2022-07-17 and never recovers — 2023 onward sits below 20% of peak."
+  notes: "One-summer microtrend. Peaks 2022-07-17 and never recovers. 2023 onward sits below 20% of peak."
 
 - id: cottagecore
   keyword: "cottagecore"
@@ -101,7 +101,7 @@
   keyword: "clean girl aesthetic"
   display_name: "Clean girl"
   category: aesthetic
-  notes: "Peaks 2022-05-29 but never decays properly — still above half of peak four years later. The catalog's main example of a trend that became a baseline."
+  notes: "Peaks 2022-05-29 but never decays properly, still above half of peak four years later. The catalog's main example of a trend that became a baseline."
 
 - id: old_money
   keyword: "old money aesthetic"
@@ -113,7 +113,7 @@
   keyword: "balaclava"
   display_name: "Balaclava"
   category: accessory
-  notes: "Not a decay curve at all — an annual winter cycle that repeats at near-full amplitude every year. Kept deliberately so seasonality is not mistaken for a lifecycle."
+  notes: "Not a decay curve at all. An annual winter cycle that repeats at near-full amplitude every year. Kept deliberately so seasonality is not mistaken for a lifecycle."
 
 - id: bucket_hat
   keyword: "bucket hat"

@@ -1,27 +1,15 @@
 """The canonical schema of `data/processed/metrics.parquet`.
 
-Single source of truth for what a row of the metrics table looks like, so
-`fashion_trends.metrics.compute_all` (the metrics engine's only entry point),
-the persisted parquet file it writes, and any other consumer building a
-metrics frame agree on the same columns in the same order with the same
-dtypes. Each stage module (`peaks`, `decay`, `status`) owns its own slice of
-this — its `*_COLUMNS` tuple and `*_DTYPES` dict — and this module only
-assembles them; a threshold or a column never gets redefined here.
+Single source of truth for the metrics table's columns, order, and dtypes.
+Each stage module (`peaks`, `decay`, `status`) owns its own `*_COLUMNS`/
+`*_DTYPES` slice; this module only assembles them.
 
-Nullable numeric types are used throughout for a reason that matters more
-here than almost anywhere else in the codebase: a null metric is a
-meaningful state (no peak found yet, a fit too short to trust, a trend that
-never crossed half its peak), and coercing one to `0` would silently turn
-"unknown" into "measured as zero" — two claims with opposite meanings. See
-each stage module's own docstring for which cases null which of its columns.
+Nullable numeric types are used throughout since a null metric is a
+meaningful state (no peak found, a fit too short to trust, etc.), and
+coercing it to `0` would silently turn "unknown" into "measured as zero".
 
-`validate_metrics_schema` is the enforcement half of this contract: a frame
-missing a column, carrying an extra one, or typed as something other than
-what's declared here (an all-null column that quietly reverted to `object`
-instead of the nullable dtype the rest of the pipeline expects, say) fails
-loudly before it is written or handed back to a caller, rather than
-persisting a `metrics.parquet` subtly different from the one the charts and
-the dashboard were built against.
+`validate_metrics_schema` enforces this contract, failing loudly rather than
+persisting a `metrics.parquet` subtly different from what charts expect.
 """
 
 from __future__ import annotations
@@ -39,9 +27,7 @@ from fashion_trends.metrics.decay import (
 from fashion_trends.metrics.peaks import PEAK_COLUMNS, PEAK_DTYPES
 from fashion_trends.metrics.status import STATUS_COLUMNS, STATUS_DTYPES
 
-# Catalog metadata plus the one flag (`low_resolution`) computed during
-# ingestion rather than in this package — see
-# `fashion_trends.ingest.pipeline._build_series_frame`.
+# Catalog metadata plus `low_resolution`, computed during ingestion.
 IDENTITY_COLUMNS = ("trend_id", "keyword", "display_name", "category", "isolate", "low_resolution")
 IDENTITY_DTYPES = {
     "trend_id": "object",
@@ -52,13 +38,8 @@ IDENTITY_DTYPES = {
     "low_resolution": "bool",
 }
 
-# Ties a row back to the run that produced it — which Google Trends request
-# shape (`timeframe`, `geo`) generated these numbers, and when. `data/processed/
-# manifest.json` records the same `timeframe`/`geo` for the run as a whole;
-# these columns exist so a single exported or filtered row of `metrics.parquet`
-# stays self-describing without a join back to that file, which matters most
-# for the dashboard's live search (see `fashion_trends.metrics.compute_all`),
-# where there may be no persisted manifest to join against at all.
+# Ties a row back to the run that produced it, so a filtered/exported row
+# stays self-describing without a join back to `manifest.json`.
 PROVENANCE_COLUMNS = ("data_pull_date", "timeframe", "geo")
 PROVENANCE_DTYPES = {
     "data_pull_date": "datetime64[ns]",
@@ -92,19 +73,14 @@ class MetricsSchemaError(ValueError):
 
 
 def validate_metrics_schema(frame: pd.DataFrame) -> None:
-    """Raise `MetricsSchemaError` unless `frame` matches `METRICS_COLUMNS`/`METRICS_DTYPES` exactly.
-
-    Column order is checked, not just membership — `compute_all` always
-    returns columns in `METRICS_COLUMNS` order, and a caller writing straight
-    to parquet should be able to rely on that without re-sorting.
-    """
+    """Raise `MetricsSchemaError` unless `frame` matches `METRICS_COLUMNS`/`METRICS_DTYPES` exactly, column order included."""
     actual_columns = list(frame.columns)
     expected_columns = list(METRICS_COLUMNS)
     if actual_columns != expected_columns:
         missing = [c for c in expected_columns if c not in actual_columns]
         unexpected = [c for c in actual_columns if c not in expected_columns]
         detail = f"missing: {missing}, unexpected: {unexpected}" if (missing or unexpected) else (f"got order {actual_columns!r}")
-        raise MetricsSchemaError(f"metrics frame does not match the canonical schema — {detail}")
+        raise MetricsSchemaError(f"metrics frame does not match the canonical schema. {detail}")
 
     mismatched = {
         column: (str(frame[column].dtype), expected_dtype)

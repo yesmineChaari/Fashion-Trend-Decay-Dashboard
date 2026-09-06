@@ -29,8 +29,7 @@ def _cached(frame, keywords=None, source="network"):
     )
 
 
-# A synthetic placeholder, deliberately not the real `Settings.anchor_keyword`
-# default — these tests exercise the rescaling math, not the anchor choice.
+# A synthetic placeholder, deliberately not the real `Settings.anchor_keyword` default.
 ANCHOR = "anchor keyword"
 
 
@@ -113,7 +112,7 @@ def test_rescale_batches_auto_selects_best_resolved_anchor_as_reference():
     isolate_batch = pd.DataFrame({ANCHOR: [1, 2], "demure": [50, 100]}, index=_dates(2))
     shared_batch = pd.DataFrame({ANCHOR: [40, 100], "mob wife": [20, 80]}, index=_dates(2))
 
-    # Isolate batch listed first, as build_batches would order it — the
+    # Isolate batch listed first, as build_batches would order it; the
     # reference must still be the shared batch (higher anchor peak: 100 > 2).
     rescaled = rescale_batches([isolate_batch, shared_batch], ANCHOR)
 

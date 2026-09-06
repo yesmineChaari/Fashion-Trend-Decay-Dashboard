@@ -1,13 +1,7 @@
-"""Trend detail page: one trend, end to end.
+"""Trend detail page: one trend's metric cards, weekly series, and decay against the median.
 
-A single-trend deep dive picked from the selector at the top: the exact
-keyword queried, the headline metric cards, the full weekly series with its
-peak and half-life annotated, and this trend's decay against the median of
-the set.
-
-All the shaping lives in `fashion_trends.app.trend_detail`, the charts in
-`fashion_trends.viz.trend_detail`, and the chart copy in
-`fashion_trends.app.explainers`, so this page only wires widgets to them.
+Shaping lives in `fashion_trends.app.trend_detail`, charts in
+`fashion_trends.viz.trend_detail`, chart copy in `fashion_trends.app.explainers`.
 """
 
 from __future__ import annotations
@@ -42,9 +36,6 @@ cards = metric_cards(row)
 
 render_page_heading(selected_name)
 
-# The exact keyword queried is always visible, regardless of which metrics
-# below turn out to be null -- the keyword choice shapes every number on
-# this page, so it can't be something a reader has to go dig for.
 explanation = status_explanation(row["status"])
 st.markdown(
     f"{status_pill(row['status'])}&nbsp;&nbsp;"

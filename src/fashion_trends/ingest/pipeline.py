@@ -1,24 +1,13 @@
-"""Orchestrate ingestion → normalization → persistence into one reproducible run.
+"""Orchestrate ingestion, normalization, and persistence into one reproducible run.
 
-This is what `scripts/refresh_data.py` calls. It fetches every batch built by
-`fashion_trends.ingest.batching`, rescales the ones that succeeded onto one
-shared axis, and writes two artifacts under `settings.data_processed_dir`:
+Called by `scripts/refresh_data.py`. Fetches every batch, rescales the ones
+that succeeded onto one shared axis, and writes `series.parquet` (long
+format, one row per trend-week) and `metrics.parquet` (one row per
+successfully-collected trend, via `fashion_trends.metrics.compute_all`).
 
-* `series.parquet` — long format, one row per (trend, week): both the
-  batch-raw and cross-batch-rescaled interest values, plus the
-  `low_resolution` flag from the normalization step.
-* `metrics.parquet` — one row per successfully-collected trend, built by
-  `fashion_trends.metrics.compute_all` and matching
-  `fashion_trends.metrics.schema.METRICS_COLUMNS` exactly: identity/provenance
-  columns, the peak columns every decay metric is measured against, the decay
-  metrics themselves, and the rule-based lifecycle status.
-
-A batch is the unit of failure: pytrends fetches every keyword in a batch
-in a single request, so a `RateLimitedError`/`NoDataError`/`TransportError`
-for one batch is recorded against every trend in that batch and the run
-moves on to the rest — a bad keyword or a rate-limited batch must not lose
-an otherwise-successful run's work. The run only fails outright when no
-batch succeeds at all (nothing to rescale, nothing to persist).
+A batch is the unit of failure: pytrends fetches every keyword in a batch in
+one request, so a failure there is recorded against every trend in it and
+the run moves on. The run only fails outright when no batch succeeds at all.
 """
 
 from __future__ import annotations
@@ -88,7 +77,7 @@ def _select_trends(trend_ids: list[str] | None) -> list[Trend]:
     by_id = {trend.id: trend for trend in catalog}
     unknown = [tid for tid in trend_ids if tid not in by_id]
     if unknown:
-        raise UnknownTrendIdsError(f"unknown trend id(s) {unknown!r} — not in the catalog ({sorted(by_id)})")
+        raise UnknownTrendIdsError(f"unknown trend id(s) {unknown!r}. Not in the catalog ({sorted(by_id)})")
     return [by_id[tid] for tid in trend_ids]
 
 
@@ -137,11 +126,9 @@ def _build_series_frame(
             rescaled_series = rescaled_frame[keyword]
             low_res = is_low_resolution(rescaled_series, low_resolution_threshold)
 
-            # Smoothing is computed on the trend's own raw scale, since the
-            # decay metrics that read it are each relative to a trend's own
-            # peak (see fashion_trends.ingest.batching's module docstring) —
-            # the reindex can introduce gap weeks absent from the rescaled
-            # frame, so that one is aligned onto the same index afterwards.
+            # Smoothing runs on the trend's own raw scale; the reindex can
+            # introduce gap weeks absent from the rescaled frame, so that one
+            # is aligned onto the same index afterwards.
             processed = preprocess_series(raw_frame[keyword], smoothing_window)
             rescaled_series = rescaled_series.reindex(processed.index)
 
@@ -183,9 +170,9 @@ def run_pipeline(
 ) -> RunResult:
     """Fetch, normalize, and persist the requested trends (or the whole catalog).
 
-    Raises `UnknownTrendIdsError` if `trend_ids` names an id not in the
-    catalog, and `PipelineFailedError` if every batch failed — anything less
-    total is persisted and reported as a partial success.
+    Raises `UnknownTrendIdsError` if `trend_ids` names an unknown id, and
+    `PipelineFailedError` if every batch failed; anything less is persisted
+    and reported as a partial success.
     """
     start = time.monotonic()
     trends = _select_trends(trend_ids)
@@ -199,7 +186,7 @@ def run_pipeline(
     trends_succeeded = len(trends) - len(failed_keywords)
 
     if not cached_batches:
-        raise PipelineFailedError(f"every batch failed — nothing to persist: {[f.reason for f in failures]}")
+        raise PipelineFailedError(f"every batch failed, nothing to persist: {[f.reason for f in failures]}")
 
     raw_frames = [cached.frame for cached in cached_batches]
     rescaled_frames = rescale_batches(raw_frames, settings.anchor_keyword)

@@ -1,22 +1,8 @@
 """The dashboard's visual layer: one stylesheet and the small HTML fragments that use it.
 
-Streamlit's defaults are functional but generic, and this dashboard is meant
-to be readable by someone who did not build it. Everything cosmetic lives
-here so a page module never carries a hex colour or an inline `<style>` of
-its own -- the same contract `fashion_trends.viz.theme` holds for matplotlib
-figures, applied to the HTML side.
-
-The palette is deliberately shared with the figures rather than picked
-independently: `STATUS_COLORS` is imported straight from
-`fashion_trends.viz.theme`, so a "collapsed" pill in the table and a
-"collapsed" bar in the ranking chart are the same colour by construction and
-cannot drift apart. The neutrals (paper, ink, rule) are duplicated in
-`.streamlit/config.toml`, which Streamlit reads for its own chrome and which
-cannot import Python -- that file says so too.
-
-`inject_styles` is called once per page run, from
-`fashion_trends.app.layout.render_header`, so no page has to remember to do
-it.
+`STATUS_COLORS` is imported from `fashion_trends.viz.theme` so a status pill
+and its matching chart colour can never drift apart. The same neutrals are
+duplicated in `.streamlit/config.toml`, which can't import Python.
 """
 
 from __future__ import annotations
@@ -35,9 +21,7 @@ __all__ = [
     "status_pill_row",
 ]
 
-# Warm paper neutrals rather than Streamlit's default cool greys: the charts
-# are drawn on white cards sitting on this background, and a warm ground
-# keeps a page of dense numbers from reading as clinical.
+# Warm paper neutrals rather than Streamlit's default cool greys.
 PALETTE = {
     "paper": "#FBFAF8",
     "card": "#FFFFFF",
@@ -48,10 +32,8 @@ PALETTE = {
     "accent": "#D55E00",
 }
 
-# Inter for the interface and Fraunces for the wordmark and titles: a single
-# serif accent is most of what separates a dashboard from a spreadsheet. Both
-# are fetched from Google Fonts by the browser and fall back through the
-# system stack, so the layout is unchanged if that request never lands.
+# Inter for the interface, Fraunces for the wordmark and titles; both fall
+# back through the system stack if the Google Fonts request never lands.
 BODY_FONT = '"Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif'
 DISPLAY_FONT = '"Fraunces", "Iowan Old Style", "Palatino Linotype", Georgia, serif'
 
@@ -70,14 +52,7 @@ def _rgba(hex_color: str, alpha: float) -> str:
 
 
 def _darken(hex_color: str, factor: float = 0.62) -> str:
-    """`hex_color` scaled toward black, for pill text legible on that colour's own tint.
-
-    A status colour chosen to read as a solid bar (see
-    `fashion_trends.viz.theme.STATUS_COLORS`) is often too light to reuse as
-    text on a 14%-tint background of itself -- the greys and the orange
-    especially. Darkening the text while leaving the tint alone keeps the
-    pill recognisably the same colour as its bar without failing contrast.
-    """
+    """`hex_color` scaled toward black, so pill text stays legible on its own tint."""
     value = hex_color.lstrip("#")
     red, green, blue = (int(int(value[index : index + 2], 16) * factor) for index in (0, 2, 4))
     return f"#{red:02X}{green:02X}{blue:02X}"
@@ -97,8 +72,7 @@ html, body, .stApp {{
     background: {PALETTE["paper"]};
 }}
 
-/* Streamlit reserves ~6rem of dead space above the first element; a
-   dashboard whose headline sits below the fold is the thing being fixed. */
+/* Trims Streamlit's default ~6rem of top padding. */
 .block-container {{
     padding-top: 2.4rem;
     padding-bottom: 4rem;
@@ -142,14 +116,7 @@ p, li {{
 
 /* ---- masthead --------------------------------------------------------- */
 
-/* Centred, unlike everything below it. The page is wide enough that a
-   left-set standfirst reads as a narrow column pinned to one edge with a
-   third of the row left empty beside it. Centring the whole block — wordmark,
-   headline, standfirst, chips — makes that whitespace symmetrical and reads
-   as a masthead rather than as text that ran out. The content underneath
-   stays left-aligned: a centred hero over left-aligned material is the
-   ordinary arrangement, and centring a table or a chart caption would be
-   worse than the problem being fixed. */
+/* Centred, unlike everything below it, to read as a masthead rather than a narrow column. */
 .ft-masthead {{
     text-align: center;
     border-bottom: 1px solid {PALETTE["rule"]};
@@ -176,10 +143,6 @@ p, li {{
     margin: 0 0 0.5rem 0;
 }}
 
-/* `margin: auto` on the sides is what actually centres the paragraph: the
-   measure cap keeps it readable, and without the auto margins that capped
-   block would still sit hard against the left edge however the text inside
-   it is aligned. */
 .ft-standfirst {{
     font-size: 1.02rem;
     line-height: 1.6;
@@ -306,8 +269,7 @@ p, li {{
     font-variant-numeric: tabular-nums;
 }}
 
-/* A hand-built equivalent of the card above, for a tile that needs a note
-   line inside its own box -- see `render_metric_card`. */
+/* Hand-built equivalent of the card above, for a tile with a note line, see `render_metric_card`. */
 .ft-metric-card {{
     background: {PALETTE["card"]};
     border: 1px solid {PALETTE["rule"]};
@@ -416,23 +378,12 @@ div[data-testid="stVerticalBlockBorderWrapper"] {{
 
 
 def inject_styles() -> None:
-    """Apply the dashboard stylesheet to the current page run.
-
-    Safe to call more than once in a run -- a repeated `<style>` block is
-    idempotent -- but in practice `fashion_trends.app.layout.render_header`
-    is the only caller, so every page gets it without opting in.
-    """
+    """Apply the dashboard stylesheet to the current page run. Safe to call more than once."""
     st.markdown(f"<style>{_STYLESHEET}</style>", unsafe_allow_html=True)
 
 
 def status_pill(status: str, count: int | None = None) -> str:
-    """One lifecycle status as a coloured pill, returned as an HTML string.
-
-    Returns markup rather than rendering it, so a caller can join several
-    into a single `st.markdown` call -- Streamlit puts each `st.markdown` in
-    its own block element, and one call per pill would stack them vertically
-    instead of laying them out in a row.
-    """
+    """One lifecycle status as a coloured pill, as HTML so callers can join several into one `st.markdown` call."""
     color = STATUS_COLORS.get(status, PALETTE["ink_muted"])
     label = status.replace("_", " ")
     count_markup = f'<span class="ft-pill-count">{count}</span>' if count is not None else ""
@@ -450,22 +401,14 @@ def status_pill_row(counts: dict[str, int]) -> str:
 
 
 def render_kicker(text: str) -> None:
-    """Render a small uppercase label above a section, in place of another `st.subheader`.
-
-    Three levels of `st.header`/`st.subheader` on one page flattens into
-    noise; a kicker separates sections without competing with the page title.
-    """
+    """Render a small uppercase label above a section, in place of another `st.subheader`."""
     st.markdown(f'<div class="ft-kicker">{text}</div>', unsafe_allow_html=True)
 
 
 def render_metric_card(label: str, value: str, note: str | None = None) -> None:
     """A metric tile with an optional note line inside the same bordered box.
 
-    `st.metric` has no slot for a second line, so a `st.caption` placed after
-    one renders as its own element below the card instead of inside it --
-    wrong for a tile like "Fastest collapse" whose value means nothing
-    without naming which trend it belongs to. This draws the same card by
-    hand so that name sits inside the box the number is in.
+    Hand-drawn because `st.metric` has no slot for a second line inside the card.
     """
     note_markup = f'<div class="ft-metric-card-note">{note}</div>' if note else ""
     st.markdown(
@@ -476,10 +419,5 @@ def render_metric_card(label: str, value: str, note: str | None = None) -> None:
 
 
 def render_note(text: str) -> None:
-    """Render a muted explanatory paragraph, measure-limited for readability.
-
-    `st.caption` is the nearest built-in but sets type too small for a
-    sentence a reader is actually meant to read; this is for the one-line
-    explanations sitting under a section heading.
-    """
+    """Render a muted explanatory paragraph, larger than `st.caption`."""
     st.markdown(f'<p class="ft-note">{text}</p>', unsafe_allow_html=True)

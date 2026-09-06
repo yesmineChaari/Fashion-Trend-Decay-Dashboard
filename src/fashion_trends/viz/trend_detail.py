@@ -1,25 +1,13 @@
 """Per-trend detail charts: the full weekly series, and this trend against the pack.
 
-Two charts live here, both scoped to a single trend rather than the whole
-catalog like `fashion_trends.viz.decay_curves`/`rankings`:
-
-* `plot_trend_series` draws one trend's raw and smoothed weekly interest with
-  its peak marked, the 50%-of-peak threshold line, and (when it has one) the
-  week it crossed that threshold -- the reader should be able to see the
-  smoothing's effect on the same axes as the moments the other metrics are
-  measured from.
-* `plot_trend_vs_median` reuses `fashion_trends.viz.decay_curves`'s
-  peak-alignment to answer a question a single trend's own numbers can't:
-  did it die fast or slow *relative to the set*. The comparison line is the
-  median of every other eligible trend, not including this one -- a trend
-  judged against a baseline built partly from itself would flatter whichever
-  trend happened to be extreme.
+`plot_trend_series` draws one trend's raw and smoothed weekly interest with
+its peak, 50%-of-peak threshold, and (if any) crossing week marked.
+`plot_trend_vs_median` reuses `fashion_trends.viz.decay_curves`'s
+peak-alignment to compare this trend's decay against the median of every
+other eligible trend.
 
 Both charts skip an annotation rather than guess when the metric behind it
-is null (pre-peak, no usable peak, never crossed half its peak) -- see each
-function's docstring for which case skips what, and
-`fashion_trends.metrics.peaks`/`decay` for why each one goes null in the
-first place.
+is null (pre-peak, no usable peak, never crossed half its peak).
 """
 
 from __future__ import annotations
@@ -60,7 +48,7 @@ def _series_caption(metrics_row: pd.Series) -> str:
     if pd.isna(metrics_row["peak_date"]):
         return "No usable peak was detected for this trend."
     if metrics_row["pre_peak"]:
-        return "Still climbing toward its peak — no post-peak decay to annotate yet."
+        return "Still climbing toward its peak, no post-peak decay to annotate yet."
     if metrics_row["time_to_half_status"] == HALF_LIFE_STILL_ABOVE:
         return "Never fell below half its peak (as of the pull date)."
     return ""
@@ -69,18 +57,10 @@ def _series_caption(metrics_row: pd.Series) -> str:
 def plot_trend_series(series: pd.DataFrame, metrics_row: pd.Series) -> Figure:
     """Raw & smoothed weekly interest for one trend, peak and half-life annotated.
 
-    `series` is `series.parquet`'s shape restricted to a single `trend_id`
-    (one row per week, `date`/`interest_raw`/`interest_smooth`); `metrics_row`
-    is that trend's row of `metrics.parquet`. Both series are plotted on the
-    trend's own raw scale, matching the scale `peak_value` and every decay
-    metric are measured on (see `fashion_trends.ingest.pipeline._build_series_frame`).
-
-    The peak marker is skipped when no peak was found at all; the secondary
-    peak marker is drawn only when `has_secondary_peak` (a revival); the 50%
-    threshold line is skipped pre-peak (there is nothing to measure decay
-    from yet); the crossing marker is drawn only when
-    `time_to_half_status` is `HALF_LIFE_CROSSED`. `_series_caption` names
-    whichever of these is missing and why.
+    The peak marker is skipped when no peak was found; the secondary peak
+    marker only when `has_secondary_peak`; the 50% threshold line is skipped
+    pre-peak; the crossing marker only when `time_to_half_status` is
+    `HALF_LIFE_CROSSED`. `_series_caption` names whichever is missing and why.
     """
     apply_theme()
     trend = series.sort_values("date")
@@ -145,7 +125,7 @@ def plot_trend_series(series: pd.DataFrame, metrics_row: pd.Series) -> Figure:
 
     ax.set_xlabel("Week")
     ax.set_ylabel("Interest (0-100, own scale)")
-    ax.set_title(f"{metrics_row['display_name']} — weekly interest")
+    ax.set_title(f"{metrics_row['display_name']}, weekly interest")
     ax.legend(loc="upper right", fontsize=8)
 
     caption = _series_caption(metrics_row)
@@ -161,13 +141,8 @@ def plot_trend_series(series: pd.DataFrame, metrics_row: pd.Series) -> Figure:
 def build_trend_vs_median_frame(series: pd.DataFrame, metrics: pd.DataFrame, trend_id: str) -> tuple[pd.DataFrame, pd.DataFrame]:
     """`(own, median)` peak-aligned curves: `trend_id`'s own, and every other eligible trend's median.
 
-    Both are built from `fashion_trends.viz.decay_curves.build_decay_curve_frame`,
-    so "eligible" means the same thing as on the overview decay-curve chart:
-    not `pre_peak`, not `peak_at_boundary`. `own` is empty when `trend_id`
-    itself isn't eligible -- there is no post-peak curve of its own to draw
-    yet. `median` is taken over every *other* eligible trend, one value per
-    `weeks_since_peak`, so `trend_id`'s own shape is never part of the
-    baseline it's being judged against.
+    `own` is empty when `trend_id` isn't eligible (`pre_peak`/`peak_at_boundary`).
+    `median` excludes `trend_id` itself.
     """
     frame = build_decay_curve_frame(series, metrics)
     own = frame[frame["trend_id"] == trend_id].sort_values("weeks_since_peak")
@@ -179,11 +154,8 @@ def build_trend_vs_median_frame(series: pd.DataFrame, metrics: pd.DataFrame, tre
 def plot_trend_vs_median(series: pd.DataFrame, metrics: pd.DataFrame, trend_id: str) -> Figure:
     """This trend's peak-aligned decay curve against the median of every other eligible trend.
 
-    See `build_trend_vs_median_frame` for what "median" means here. When
-    `trend_id` has no post-peak curve of its own (still rising, or its peak
-    sits at the edge of the pulled window), only the median line is drawn,
-    with a caption explaining why the trend's own line is missing rather
-    than silently rendering half a chart.
+    When `trend_id` has no post-peak curve of its own, only the median line
+    is drawn, with a caption explaining why.
     """
     apply_theme()
     own, median = build_trend_vs_median_frame(series, metrics, trend_id)

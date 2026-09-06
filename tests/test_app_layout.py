@@ -27,10 +27,8 @@ def _metrics():
     )
 
 
-# render_header and render_missing_data_screen call Streamlit's st.* delta
-# generators, which are safe to call outside a running script (they no-op
-# rather than raise) — these tests only guard against a code path that
-# raises, e.g. a KeyError on a provenance column that isn't there.
+# Streamlit's st.* calls no-op outside a running script; these tests only
+# guard against a code path that raises, e.g. a missing provenance column.
 
 
 def test_render_header_reads_provenance_columns_without_raising():

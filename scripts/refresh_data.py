@@ -6,12 +6,11 @@
 
 `--refresh`, `--offline`, and `--trends` are run-specific flags handled here;
 every other flag (timeframe, geo, cache-ttl-days, ...) is a `Settings` field
-and passed straight through to `fashion_trends.settings.load_settings` — see
-that module for the full list.
+passed straight through to `fashion_trends.settings.load_settings`.
 
 Exits non-zero only when every trend failed; a partial failure (some trends
 fetched, some not) still exits 0 so a scheduled run isn't marked broken over
-one bad keyword — see the printed summary and `data/processed/manifest.json`
+one bad keyword. See the printed summary and `data/processed/manifest.json`
 for which ones failed and why.
 """
 

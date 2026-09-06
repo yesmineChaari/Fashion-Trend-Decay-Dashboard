@@ -1,11 +1,7 @@
-"""Live search page: analyse any keyword on demand.
+"""Live search page: analyse any keyword on demand, with the same fetch path and metrics as Trend detail.
 
-Type a keyword that isn't in `config/trends.yaml` and get the same analysis
-the curated set gets — the same fetch path, the same metrics engine, the same
-cards and chart as the Trend detail page. This page is the only one in the
-dashboard that reaches the network; everything it does with what comes back
-lives in `fashion_trends.app.live_search`, so this file stays widgets and
-nothing else.
+The only page that reaches the network. The actual logic lives in
+`fashion_trends.app.live_search`; this file stays widgets only.
 """
 
 from __future__ import annotations
@@ -42,9 +38,7 @@ render_page_heading(
 
 settings = get_settings()
 
-# A form rather than a bare text input: `st.text_input` reruns the script on
-# every keystroke, which against a rate-limited unofficial endpoint would
-# mean a request per character. A form submits once, on the button.
+# A form, not a bare text input, so it submits once instead of on every keystroke.
 with st.form("live_search"):
     keyword_input = st.text_input("Keyword", placeholder="e.g. barrel jeans")
     timeframe_column, geo_column = st.columns(2)
@@ -59,11 +53,8 @@ with st.form("live_search"):
 keyword = normalize_keyword(keyword_input)
 
 if not submitted:
-    # An empty page under an empty form reads as broken rather than as
-    # waiting, so the pre-search state says what makes a keyword work -- the
-    # thing that decides whether a first attempt returns anything usable.
     render_note(
-        "Specific, widely-searched phrases work best — a garment, an aesthetic, or a named look, the way "
+        "Specific, widely-searched phrases work best, a garment, an aesthetic, or a named look, the way "
         f"someone would type it. One lookup every {MIN_SECONDS_BETWEEN_LOOKUPS:.0f} seconds."
     )
     st.stop()
@@ -74,13 +65,12 @@ if not keyword:
 
 wait_seconds = seconds_until_next_lookup(st.session_state.get(LAST_LOOKUP_KEY), time.monotonic())
 if wait_seconds > 0:
-    st.warning(f"Slow down a moment — one lookup every {MIN_SECONDS_BETWEEN_LOOKUPS:.0f}s. Try again in {wait_seconds:.0f}s.")
+    st.warning(f"Slow down a moment, one lookup every {MIN_SECONDS_BETWEEN_LOOKUPS:.0f}s. Try again in {wait_seconds:.0f}s.")
     st.stop()
 st.session_state[LAST_LOOKUP_KEY] = time.monotonic()
 
-# `lookup_keyword` is cached per (keyword, settings), and the timeframe and
-# geo overrides live in `settings` — so re-submitting a keyword already
-# looked at this session re-renders it without spending another request.
+# `lookup_keyword` is cached per (keyword, settings), so a repeat submission
+# re-renders without spending another request.
 try:
     with st.spinner(f"Fetching “{keyword}” from Google Trends…"):
         result = lookup_keyword(keyword, replace(settings, timeframe=timeframe, geo=geo))
@@ -93,8 +83,7 @@ except TrendsClientError as error:
 render_page_heading(result.keyword)
 
 if result.sparse:
-    # Metrics were computed — the chart's peak and half-life annotations read
-    # off them — but they are not shown as findings. See `LiveResult.sparse`.
+    # Metrics were computed, but not shown as findings. See `LiveResult.sparse`.
     st.warning(SPARSE_MESSAGE)
 else:
     cards = metric_cards(result.metrics_row)

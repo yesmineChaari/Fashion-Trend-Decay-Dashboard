@@ -1,39 +1,17 @@
 """Locate a trend's peak and flag the cases where a single peak is a lie.
 
-Every decay metric downstream is measured *relative to the peak* — % dropped
-since peak, % of peak lost per week, weeks until half the peak is gone — so a
-peak in the wrong week doesn't produce a slightly wrong number, it produces a
-confident wrong number for the whole trend. That makes the interesting part of
-this module not the `idxmax` but the four shapes where the peak is real yet the
-story around it isn't:
+Every decay metric downstream is measured relative to the peak, so a peak
+found in the wrong week produces a confidently wrong number for the whole
+trend. Four flags qualify a real-but-misleading peak:
 
-* **A false spike.** One week of unrelated news puts a trend at its all-time
-  high. The peak is read off `interest_smooth` (see
-  `fashion_trends.metrics.smoothing`), which cuts a lone spike down toward
-  its neighbours — but does not remove it: against a flat baseline the
-  averaged-down spike is still the tallest thing in the window, so the peak
-  lands on (or beside) it anyway, several times higher than the level the
-  trend actually held. `peak_is_spike` marks a peak whose height rests on a
-  single week — the neighbourhood around it is mostly baseline — and
-  `peak_value_raw` carries the unsmoothed value of the peak week so the gap
-  between the two stays visible.
-* **A revival.** A trend peaks, fades, and comes back. The global maximum is
-  still the peak — but "dropped 60% since peak" describes neither hump when a
-  second one nearly as tall sits at the other end of the window.
-  `has_secondary_peak` marks it so the UI can say two peaks rather than
-  quietly averaging them into one decay story.
-* **A peak against the window edge.** If the tallest week is in the first or
-  last few weeks observed, the real peak may well sit outside the window
-  entirely — before the pull started, or after it ends. `peak_at_boundary`
-  says the numbers describe a fragment, not a lifecycle.
-* **A trend still on the way up.** If the peak *is* the most recent week and
-  the series is still climbing into it, there is no decay to measure yet.
-  `pre_peak` marks it; decay metrics for these trends belong as nulls, not as
-  a zero drop.
+* `peak_is_spike`: the peak's height rests on a single outlier week rather
+  than a real hump (`peak_value_raw` keeps the unsmoothed value for contrast).
+* `has_secondary_peak`: a revival, a second hump nearly as tall as the peak.
+* `peak_at_boundary`: the real peak may sit outside the pulled window.
+* `pre_peak`: still climbing into what would be its peak; no decay yet.
 
 None of these flags reject a trend. They travel with it as columns in
-`metrics.parquet`, so the charts and the dashboard can present a fragment as a
-fragment instead of ranking it against complete ones.
+`metrics.parquet` so a fragment is presented as a fragment.
 """
 
 from __future__ import annotations
@@ -48,8 +26,7 @@ import pandas as pd
 class PeakResult:
     """One trend's peak, plus the flags qualifying how much it can be trusted.
 
-    Every value field is `None` for a series with no usable observations, so a
-    caller never has to tell "no peak found" apart from "a peak of zero".
+    Every value field is `None` for a series with no usable observations.
     """
 
     peak_date: pd.Timestamp | None = None
@@ -69,12 +46,7 @@ class PeakResult:
 
 
 def _threshold_runs(above: pd.Series) -> list[tuple[int, int]]:
-    """Positional `(start, end)` spans of each contiguous `True` run in `above`.
-
-    `end` is exclusive. This is what splits a smoothed series into the separate
-    episodes where it sits above the secondary-peak threshold: two humps are
-    two runs precisely because the series came back *down* between them.
-    """
+    """Positional `(start, end)` spans of each contiguous `True` run in `above`. `end` is exclusive."""
     runs: list[tuple[int, int]] = []
     start: int | None = None
     for position, flag in enumerate(above.to_numpy()):
@@ -97,11 +69,8 @@ def _is_spike_driven(
 ) -> bool:
     """True if the peak's height rests on a single week rather than a hump.
 
-    The test is the *median* of the raw weeks the smoothing window averaged
-    into the peak. A median is what separates the two cases the mean cannot:
-    a real hump has tall neighbours, so its median sits near the peak; a lone
-    spike is surrounded by baseline, so the median stays down at the level the
-    trend actually held while the mean is dragged up by the one outlier week.
+    Tested via the median (not mean) of the raw weeks around the peak: a real
+    hump's median sits near the peak, a lone spike's stays down at baseline.
     """
     half = max(1, smoothing_window // 2)
     lo = max(0, peak_position - half)
@@ -122,19 +91,9 @@ def detect_peak(
 ) -> PeakResult:
     """Find the peak of one preprocessed trend series and qualify it.
 
-    `processed` is the frame returned by
-    `fashion_trends.metrics.smoothing.preprocess_series`: a complete weekly
-    `DatetimeIndex` with `interest_raw` and `interest_smooth` columns. The peak
-    is the maximum of the smoothed column; `peak_value_raw` is the unsmoothed
-    value of that same week (`None` if that week was a gap in the pull).
-
-    `smoothing_window` must be the window that frame was smoothed with — it is
-    how wide a neighbourhood the spike check looks at. `secondary_peak_ratio`
-    is the fraction of the peak another hump must reach to count as a second
-    one, `spike_peak_ratio` the fraction of it the peak's own neighbourhood
-    must hold to count as a hump rather than a spike, `boundary_weeks` how
-    close to either end of the window still counts as the edge, and
-    `rise_weeks` how far back to look to decide a trend is still climbing.
+    The peak is the maximum of `interest_smooth`; `peak_value_raw` is the
+    unsmoothed value of that same week (`None` if it was a gap). Ratio/weeks
+    parameters tune the spike, secondary-peak, boundary, and rising checks.
     """
     smooth = processed["interest_smooth"]
     if smooth.notna().sum() == 0:
@@ -151,10 +110,7 @@ def detect_peak(
     is_spike = _is_spike_driven(processed["interest_raw"], peak_position, smoothing_window, peak_value, spike_peak_ratio)
 
     # A second hump only counts if the series dropped back below the threshold
-    # in between — otherwise it is a shoulder of the same peak, and calling it
-    # a revival would put a two-peak warning on what is really one plateau.
-    # Gap weeks count as below, which is the conservative reading: a hole in
-    # the data is not evidence of a hump.
+    # in between, otherwise it's a shoulder of the same peak. Gap weeks count as below.
     above = (smooth >= secondary_peak_ratio * peak_value).fillna(False)
     other_runs = [(start, end) for start, end in _threshold_runs(above) if not start <= peak_position < end]
     secondary_date: pd.Timestamp | None = None
@@ -167,10 +123,8 @@ def detect_peak(
 
     at_boundary = peak_position < boundary_weeks or peak_position > last_position - boundary_weeks
 
-    # Still rising: the peak is the newest week we have *and* the smoothed
-    # series climbed into it. The second half matters — a flat series also ends
-    # on its maximum, and that is a trend going nowhere rather than one on the
-    # way up.
+    # Still rising: peak is the newest week AND the series climbed into it
+    # (a flat series also ends on its maximum, but isn't rising).
     rising = False
     if peak_position == last_position and last_position > 0:
         earlier = smooth.iloc[max(0, last_position - rise_weeks)]
@@ -203,10 +157,8 @@ PEAK_COLUMNS = (
     "pre_peak",
 )
 
-# Explicit dtypes so a column that happens to be all-null in one run still
-# round-trips through parquet as the type the rest of the pipeline expects.
-# Public: `fashion_trends.metrics.schema` reuses this as the single source of
-# truth for these columns' dtypes in the canonical metrics table.
+# Explicit dtypes so an all-null column still round-trips through parquet correctly.
+# Public: reused by `fashion_trends.metrics.schema`.
 PEAK_DTYPES = {
     "peak_date": "datetime64[ns]",
     "peak_value": "float64",
@@ -229,13 +181,7 @@ def detect_peaks_by_trend(
     boundary_weeks: int,
     rise_weeks: int,
 ) -> pd.DataFrame:
-    """Run `detect_peak` over every trend in a long-format series frame.
-
-    `series` has `series.parquet`'s shape — one row per (trend, week), with
-    `date`, `trend_id`, `interest_raw`, and `interest_smooth` columns. Returns
-    one row per `trend_id` carrying `PEAK_COLUMNS`, ready to merge onto the
-    metrics table.
-    """
+    """Run `detect_peak` over every trend, returning one row per `trend_id` carrying `PEAK_COLUMNS`."""
     rows = []
     for trend_id, group in series.groupby("trend_id", sort=False):
         processed = group.set_index("date")[["interest_raw", "interest_smooth"]].sort_index()
