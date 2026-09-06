@@ -52,9 +52,16 @@ accept every field on `fashion_trends.settings.Settings` as a flag (e.g.
 figures (`outputs/figures/decay_curves.png`, `drop_ranking.png`,
 `time_to_decline.png`). It makes no network calls.
 
-The Streamlit dashboard reads the same processed parquet files and adds one
-live path: its Live search page fetches and analyses any single ad-hoc
-keyword on demand, without touching the curated `data/processed/` artifacts.
+The Streamlit dashboard reads the same processed parquet files. Its Overview
+page carries the three catalog-wide figures (the peak-aligned decay curves,
+the drop ranking, and time-to-50%) plus the full sortable table; Trend detail
+is a per-trend deep dive; and Live search is the one live path, fetching and
+analysing any single ad-hoc keyword on demand without touching the curated
+`data/processed/` artifacts. Every figure ships with a plain-language summary
+and a "how to read this chart" panel — an axis labelled "weeks since peak"
+means nothing on its own, and the copy for all of them lives in one place
+(`fashion_trends.app.explainers`) so no two pages describe the same chart
+differently.
 
 ## Development
 
@@ -85,10 +92,11 @@ src/fashion_trends/
   ingest/                     pytrends client, batching/normalization, cache, fixtures, pipeline
   metrics/                    smoothing, peak detection, decay, lifecycle status, schema
   viz/                        chart theme and figure builders
-  app/                        Streamlit page logic and cached data-access layer
+  app/                        Streamlit page logic, chrome, stylesheet, chart explainers
 app/
   streamlit_app.py             dashboard entry point (`streamlit run app/streamlit_app.py`)
   views/                       Overview, Trend detail, Live search pages
+.streamlit/config.toml       dashboard colour theme
 scripts/
   refresh_data.py               ingestion CLI
   build_charts.py               static-figure CLI

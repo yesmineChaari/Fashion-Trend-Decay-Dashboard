@@ -23,6 +23,7 @@ from typing import Any
 import pandas as pd
 
 from fashion_trends.metrics.decay import HALF_LIFE_CROSSED, HALF_LIFE_PRE_PEAK, HALF_LIFE_STILL_ABOVE
+from fashion_trends.metrics.status import STATUS_REVIVED
 
 # Sentinel filter values meaning "don't filter on this dimension" — kept
 # distinct from any real category or status string so a widget's default
@@ -59,30 +60,21 @@ OVERVIEW_COLUMN_LABELS = {
     "flags": "Caveats",
 }
 
-# Column-header help text: the inline affordance tracing each displayed
-# metric back to the function that defines it.
+# Column-header help text: the inline affordance saying what each displayed
+# metric actually measures. Written for a reader, not a maintainer -- no
+# module paths, no function names, no parenthetical asides. Whoever wants the
+# formal definition of a column goes to `docs/methodology.md`, which names the
+# function behind every one of them.
 OVERVIEW_COLUMN_HELP = {
-    "display_name": "The catalog's display name for this trend (config/trends.yaml).",
-    "category": "One of aesthetic, garment, accessory, styling (fashion_trends.keywords.VALID_CATEGORIES).",
-    "status": "Lifecycle label assigned by fashion_trends.metrics.status.classify_status.",
-    "peak_date": "Week the smoothed series reached its maximum (fashion_trends.metrics.peaks.detect_peak).",
-    "pct_dropped": (
-        "% dropped from peak to the current smoothing-window average, clamped to 0-100 "
-        "(fashion_trends.metrics.decay.compute_pct_dropped)."
-    ),
-    "decay_rate_linear": (
-        "Percentage points of the peak lost per week since peak (fashion_trends.metrics.decay.compute_decay_rate)."
-    ),
-    "weeks_to_half": (
-        "Weeks from peak until the series held below half its peak for a sustained run "
-        "(fashion_trends.metrics.decay.compute_time_to_half)."
-    ),
-    "flags": (
-        "Caveats affecting how far this trend's metrics can be trusted: low-resolution data "
-        "(fashion_trends.settings.Settings.low_resolution_threshold), a peak sitting at the edge of "
-        "the pulled window, or a secondary peak splitting the decay story "
-        "(fashion_trends.metrics.peaks)."
-    ),
+    "display_name": "The name this trend is listed under.",
+    "category": "What kind of trend it is: an aesthetic, a garment, an accessory, or a way of styling.",
+    "status": "Where the trend sits in its life: still rising, declining, collapsed, stabilized, or revived.",
+    "peak_date": "The week this trend's search interest was at its highest.",
+    "pct_dropped": "How far it has fallen from that peak to where it sits now.",
+    "decay_rate_linear": "Percentage points of its peak lost per week since it peaked.",
+    "weeks_to_half": "Weeks from the peak until interest stayed below half of it.",
+    "flags": "Reasons to read this row with more caution: thin data, a peak at the edge of the window, "
+    "or a second peak the Status column doesn't already name.",
 }
 
 
@@ -101,7 +93,7 @@ def filter_metrics(metrics: pd.DataFrame, category: str, status: str) -> pd.Data
 
 
 def summary_tiles(metrics: pd.DataFrame) -> dict[str, Any]:
-    """Median % dropped, median weeks-to-half, and a count of trends by status.
+    """Headline numbers for the top of the Overview page.
 
     Both medians are taken over the trends that actually have the metric —
     `pct_dropped` excludes pre-peak/no-peak trends by being null for them
@@ -109,13 +101,24 @@ def summary_tiles(metrics: pd.DataFrame) -> dict[str, Any]:
     rows so a `still_above_half` trend's lack of a crossing doesn't get
     averaged in as if it were a fast one. Either median is `None` when no row
     qualifies, distinguishing "nothing to average" from "averages to zero".
+
+    `fastest_collapse` is the `(display_name, weeks)` of the quickest trend to
+    lose half its peak, or `None` when no trend in `metrics` crossed at all.
+    A median alone says how the set behaves without ever naming a trend, and
+    the single fastest death is the finding a reader actually repeats — the
+    same reason `fashion_trends.viz.decay_curves` draws the extremes bold
+    rather than only the middle of the distribution.
     """
     pct_dropped = metrics["pct_dropped"].dropna()
-    crossed_weeks = metrics.loc[metrics["time_to_half_status"] == HALF_LIFE_CROSSED, "weeks_to_half"].dropna()
+    crossed = metrics.loc[metrics["time_to_half_status"] == HALF_LIFE_CROSSED].dropna(subset=["weeks_to_half"])
+    fastest = crossed.nsmallest(1, "weeks_to_half")
 
     return {
         "median_pct_dropped": float(pct_dropped.median()) if not pct_dropped.empty else None,
-        "median_weeks_to_half": float(crossed_weeks.median()) if not crossed_weeks.empty else None,
+        "median_weeks_to_half": float(crossed["weeks_to_half"].median()) if not crossed.empty else None,
+        "fastest_collapse": None
+        if fastest.empty
+        else (str(fastest["display_name"].iloc[0]), int(fastest["weeks_to_half"].iloc[0])),
         "status_counts": metrics["status"].value_counts().to_dict(),
     }
 
@@ -164,13 +167,23 @@ def format_weeks_to_half(row: pd.Series) -> str:
 
 
 def format_flags(row: pd.Series) -> str:
-    """One metrics row's caveat flags, display-ready. Public: reused by `fashion_trends.app.trend_detail`."""
+    """One metrics row's caveat flags, display-ready. Public: reused by `fashion_trends.app.trend_detail`.
+
+    A second peak is left out of the list for a `revived` row, which is every
+    row carrying one but a single shape: `fashion_trends.metrics.status`
+    assigns that label *because* a second peak was found, so listing it here
+    prints the Status column's own reason back at the reader as if it were an
+    extra caveat -- the repetition `status_explanation` avoids on the other
+    side of the same pairing. The one shape it still says something for is a
+    trend climbing past an earlier hump, labelled `pre_peak`, where nothing
+    else on the row mentions the hump at all.
+    """
     labels = []
     if row["low_resolution"]:
         labels.append("low-resolution data")
     if row["peak_at_boundary"]:
         labels.append("peak near window edge")
-    if row["has_secondary_peak"]:
+    if row["has_secondary_peak"] and row["status"] != STATUS_REVIVED:
         labels.append("secondary peak (revival)")
     return ", ".join(labels)
 

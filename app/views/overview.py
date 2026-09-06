@@ -1,10 +1,14 @@
-"""Overview page: ranked metrics table with filters.
+"""Overview page: the headline numbers, then everything else behind tabs.
 
-The landing view: every trend, its headline metrics, sortable by column and
-filterable by category and lifecycle status, with summary tiles and the
-ranked drop-from-peak chart following whatever filters are active. All the
-shaping logic lives in `fashion_trends.app.overview` so it can be unit tested
-without a running Streamlit script; this page only wires widgets to it.
+The landing view. It answers "how do these trends die, in general" before
+"what happened to this one": a filter row, four headline tiles, then the
+three catalog-wide figures and the full table, one per tab. Tabs rather than
+a stacked page — all four are views of the same filtered set, and stacking
+them made a page nobody could take in at once.
+
+All the shaping logic lives in `fashion_trends.app.overview` and the chart
+copy in `fashion_trends.app.explainers`, so this page only wires widgets to
+them.
 """
 
 from __future__ import annotations
@@ -12,6 +16,8 @@ from __future__ import annotations
 import streamlit as st
 
 from fashion_trends.app.data import get_settings, load_dashboard_data
+from fashion_trends.app.explainers import render_explainer
+from fashion_trends.app.layout import render_chart
 from fashion_trends.app.overview import (
     ALL_CATEGORIES,
     ALL_STATUSES,
@@ -21,49 +27,83 @@ from fashion_trends.app.overview import (
     format_overview_table,
     summary_tiles,
 )
-from fashion_trends.viz.rankings import plot_drop_ranking
+from fashion_trends.app.styles import render_metric_card, status_pill_row
+from fashion_trends.viz.decay_curves import plot_decay_curves
+from fashion_trends.viz.rankings import plot_drop_ranking, plot_time_to_decline
 
-st.title("Overview")
-
-_series, metrics = load_dashboard_data(get_settings())
+series, metrics = load_dashboard_data(get_settings())
 
 if metrics.empty:
     st.info("No trend data loaded.")
     st.stop()
 
+# ---- filters ----------------------------------------------------------
+
 category_options = [ALL_CATEGORIES, *sorted(metrics["category"].dropna().unique())]
 status_options = [ALL_STATUSES, *sorted(metrics["status"].dropna().unique())]
 
-filter_col1, filter_col2 = st.columns(2)
+filter_col1, filter_col2, _spacer = st.columns([1, 1, 2])
 category = filter_col1.selectbox("Category", category_options)
 status = filter_col2.selectbox("Lifecycle status", status_options)
 
 filtered = filter_metrics(metrics, category, status)
 
 if filtered.empty:
-    st.warning("No trends match the selected filters.")
+    st.warning("No trends match those filters. Widen one of them to see results.")
     st.stop()
 
+# ---- headline numbers -------------------------------------------------
+
 tiles = summary_tiles(filtered)
-tile_col1, tile_col2, tile_col3 = st.columns(3)
-tile_col1.metric(
+fastest = tiles["fastest_collapse"]
+
+tile_col1, tile_col2, tile_col3, tile_col4 = st.columns(4)
+tile_col1.metric("Trends shown", len(filtered), help="How many of the catalog's trends pass the filters above.")
+tile_col2.metric(
     "Median % dropped",
     f"{tiles['median_pct_dropped']:.0f}%" if tiles["median_pct_dropped"] is not None else "n/a",
+    help="The middle trend's fall from its own peak. Half the set has dropped more than this, half less.",
 )
-tile_col2.metric(
+tile_col3.metric(
     "Median weeks to 50%",
     f"{tiles['median_weeks_to_half']:.0f}" if tiles["median_weeks_to_half"] is not None else "n/a",
+    help="Weeks the middle trend took to lose half its peak. Counts only trends that have crossed that line.",
 )
-tile_col3.metric("Trends shown", len(filtered))
-st.caption(" · ".join(f"{status_name}: {count}" for status_name, count in sorted(tiles["status_counts"].items())))
+with tile_col4:
+    render_metric_card(
+        "Fastest collapse",
+        f"{fastest[1]} wk" if fastest else "n/a",
+        note=fastest[0] if fastest else None,
+    )
 
-st.dataframe(
-    format_overview_table(filtered),
-    hide_index=True,
-    column_config={
-        column: st.column_config.Column(OVERVIEW_COLUMN_LABELS[column], help=OVERVIEW_COLUMN_HELP[column])
-        for column in OVERVIEW_COLUMN_HELP
-    },
+st.markdown(status_pill_row(tiles["status_counts"]), unsafe_allow_html=True)
+
+# ---- the charts and the table, one per tab ----------------------------
+
+curves_tab, drop_tab, time_tab, table_tab = st.tabs(
+    ["Decay curves", "Drop from peak", "Time to 50%", "Full table"],
 )
 
-st.pyplot(plot_drop_ranking(filtered))
+with curves_tab, st.container(border=True):
+    render_chart(plot_decay_curves(series, filtered))
+    render_explainer("decay_curves")
+
+with drop_tab, st.container(border=True):
+    render_chart(plot_drop_ranking(filtered))
+    render_explainer("drop_ranking")
+
+with time_tab, st.container(border=True):
+    render_chart(plot_time_to_decline(filtered))
+    render_explainer("time_to_decline")
+
+with table_tab, st.container(border=True):
+    st.dataframe(
+        format_overview_table(filtered),
+        hide_index=True,
+        use_container_width=True,
+        column_config={
+            column: st.column_config.Column(OVERVIEW_COLUMN_LABELS[column], help=OVERVIEW_COLUMN_HELP[column])
+            for column in OVERVIEW_COLUMN_HELP
+        },
+    )
+    render_explainer("overview_table")

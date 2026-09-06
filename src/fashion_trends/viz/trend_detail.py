@@ -31,7 +31,7 @@ import pandas as pd
 
 from fashion_trends.metrics.decay import HALF_LIFE_CROSSED, HALF_LIFE_STILL_ABOVE
 from fashion_trends.viz.decay_curves import HALF_LIFE_REFERENCE_PCT, build_decay_curve_frame
-from fashion_trends.viz.theme import apply_theme, category_style
+from fashion_trends.viz.theme import apply_theme, category_style, line_chart_grid
 
 if TYPE_CHECKING:
     from matplotlib.figure import Figure
@@ -47,7 +47,7 @@ HALF_LIFE_MARKER_COLOR = "#D55E00"
 THRESHOLD_LINE_COLOR = "#999999"
 
 CAPTION_FONTSIZE = 7
-CAPTION_COLOR = "#555555"
+CAPTION_COLOR = "#6B645C"
 
 MEDIAN_LINE_COLOR = "#999999"
 
@@ -87,6 +87,7 @@ def plot_trend_series(series: pd.DataFrame, metrics_row: pd.Series) -> Figure:
     style = category_style(metrics_row["category"])
 
     fig, ax = plt.subplots()
+    line_chart_grid(ax)
 
     ax.plot(
         trend["date"],
@@ -189,6 +190,7 @@ def plot_trend_vs_median(series: pd.DataFrame, metrics: pd.DataFrame, trend_id: 
     row = metrics.loc[metrics["trend_id"] == trend_id].iloc[0]
 
     fig, ax = plt.subplots()
+    line_chart_grid(ax)
 
     ax.plot(
         median["weeks_since_peak"],

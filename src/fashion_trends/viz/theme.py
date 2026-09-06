@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING, Any
 import matplotlib
 
 if TYPE_CHECKING:
+    from matplotlib.axes import Axes
     from matplotlib.figure import Figure
 
 # Okabe-Ito palette: chosen because it stays distinguishable under every
@@ -78,41 +79,116 @@ FALLBACK_STATUS_COLOR = "#000000"
 FIGURE_SIZE = (10.0, 6.0)
 FIGURE_DPI = 150
 FONT_FAMILY = "sans-serif"
-GRID_COLOR = "#CCCCCC"
-GRID_LINEWIDTH = 0.6
-TEXT_COLOR = "#222222"
+
+# Preference order, not a requirement: matplotlib walks this list and takes
+# the first face actually installed, falling back to its bundled DejaVu Sans.
+# Inter is the dashboard's interface font (see
+# `fashion_trends.app.styles.BODY_FONT`), so on a machine that has it the
+# figures and the page around them set in the same typeface.
+FONT_STACK = ["Inter", "Segoe UI", "Helvetica Neue", "Arial", "DejaVu Sans"]
+
+# Paper-white plotting surface on the warm off-white the dashboard uses for
+# its page ground: a figure then reads as a card sitting on the page rather
+# than a rectangle pasted onto it.
+FIGURE_FACECOLOR = "#FFFFFF"
+
+# Chart furniture recedes and data advances: a hairline grid, no top or right
+# spine at all, and no tick marks. Every value here is deliberately lighter
+# than matplotlib's default — the previous mid-grey grid competed with the
+# faint decay-curve lines drawn on top of it.
+GRID_COLOR = "#EAE5DD"
+GRID_LINEWIDTH = 0.8
+SPINE_COLOR = "#D8D1C6"
+TEXT_COLOR = "#1F1C1A"
+MUTED_TEXT_COLOR = "#6B645C"
 
 FOOTER_FONTSIZE = 8
-FOOTER_COLOR = "#555555"
+FOOTER_COLOR = "#928A80"
 
 
 def apply_theme() -> None:
     """Set the shared rcParams every figure in the project should draw with.
 
-    Call once, before building any figure. Covers palette, font, grid style,
-    figure size, and DPI, so a chart module never needs `plt.rcParams[...] =`
-    or a bare hex colour of its own — pull a per-series style from
-    `category_style` instead, which already matches this palette.
+    Call once, before building any figure. Covers palette, typography, grid
+    and spine style, figure size, and DPI, so a chart module never needs
+    `plt.rcParams[...] =` or a bare hex colour of its own — pull a per-series
+    style from `category_style` instead, which already matches this palette.
+
+    Titles are left-aligned rather than centred: every figure here is read
+    alongside a heading and a paragraph of explanation in the dashboard (see
+    `fashion_trends.app.explainers`), and a left-aligned title lines up with
+    that column of text instead of floating over the middle of the axes.
     """
     matplotlib.rcParams.update(
         {
             "figure.figsize": FIGURE_SIZE,
             "figure.dpi": FIGURE_DPI,
+            "figure.facecolor": FIGURE_FACECOLOR,
             "savefig.dpi": FIGURE_DPI,
             "savefig.bbox": "tight",
+            "savefig.facecolor": FIGURE_FACECOLOR,
             "font.family": FONT_FAMILY,
+            "font.sans-serif": FONT_STACK,
+            "font.size": 10.5,
+            "axes.facecolor": FIGURE_FACECOLOR,
             "axes.grid": True,
             "axes.axisbelow": True,
+            "axes.spines.top": False,
+            "axes.spines.right": False,
             "grid.color": GRID_COLOR,
             "grid.linewidth": GRID_LINEWIDTH,
-            "axes.edgecolor": "#333333",
-            "axes.labelcolor": TEXT_COLOR,
+            "axes.edgecolor": SPINE_COLOR,
+            "axes.linewidth": 1.0,
+            "axes.labelcolor": MUTED_TEXT_COLOR,
+            "axes.labelsize": 10,
+            "axes.labelpad": 8,
+            "axes.titlesize": 14,
+            "axes.titleweight": "semibold",
+            "axes.titlelocation": "left",
+            "axes.titlepad": 14,
+            "axes.titlecolor": TEXT_COLOR,
             "text.color": TEXT_COLOR,
-            "xtick.color": TEXT_COLOR,
-            "ytick.color": TEXT_COLOR,
+            "xtick.color": MUTED_TEXT_COLOR,
+            "ytick.color": MUTED_TEXT_COLOR,
+            "xtick.labelsize": 9.5,
+            "ytick.labelsize": 9.5,
+            "xtick.major.size": 0,
+            "ytick.major.size": 0,
+            "legend.frameon": True,
+            "legend.framealpha": 0.94,
+            "legend.facecolor": FIGURE_FACECOLOR,
+            "legend.edgecolor": GRID_COLOR,
+            "legend.borderpad": 0.7,
+            "legend.labelspacing": 0.5,
             "axes.prop_cycle": matplotlib.cycler(color=list(CATEGORY_COLORS.values())),
         }
     )
+
+
+def bar_chart_grid(ax: Axes) -> None:
+    """Restrict the grid to the value axis of a horizontal bar chart.
+
+    `apply_theme` turns the grid on for both axes, which is right for a line
+    chart and wrong for `barh`: a horizontal rule running through the middle
+    of every bar gives a reader no reference they can use and visibly stripes
+    the bars. The vertical rules behind them do carry meaning — they are the
+    scale each bar is read against — so those stay.
+    """
+    ax.grid(axis="x", visible=True)
+    ax.grid(axis="y", visible=False)
+
+
+def line_chart_grid(ax: Axes) -> None:
+    """Restrict the grid to the y axis of a time-series or decay-curve chart.
+
+    The y axis on these charts is the quantity being compared (interest, or
+    percent of peak) and benefits from horizontal rules to read values
+    against. The x axis is time, already carrying its own reference marks
+    (the peak line at week 0, the tick labels), so vertical rules only add
+    crosshatching behind the lines that matter.
+    """
+    ax.grid(axis="y", visible=True)
+    ax.grid(axis="x", visible=False)
 
 
 def category_style(category: str) -> dict[str, str]:

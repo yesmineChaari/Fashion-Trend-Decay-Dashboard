@@ -4,7 +4,7 @@ import pytest
 from fashion_trends import metrics as metrics_module
 from fashion_trends.app import trend_detail as trend_detail_module
 from fashion_trends.app.overview import JUST_PEAKED, NEVER_HALVED, NO_PEAK_DETECTED, STILL_RISING
-from fashion_trends.app.trend_detail import NO_NOTES, catalog_notes, metric_cards
+from fashion_trends.app.trend_detail import NO_NOTES, catalog_notes, metric_cards, status_explanation
 from fashion_trends.keywords import Trend
 from fashion_trends.metrics import compute_all
 from fashion_trends.settings import Settings
@@ -153,10 +153,19 @@ def test_metric_cards_expands_every_status_to_plain_language(metrics):
 
 
 def test_metric_cards_lists_active_flags():
-    cards = metric_cards(_minimal_row(peak_at_boundary=True, has_secondary_peak=True))
+    cards = metric_cards(_minimal_row(status="pre_peak", peak_at_boundary=True, has_secondary_peak=True))
 
     assert "peak near window edge" in cards["flags"]
     assert "secondary peak (revival)" in cards["flags"]
+
+
+def test_metric_cards_leave_the_second_peak_out_of_a_revived_row():
+    # The status card already spells out "a second peak nearly as tall as the
+    # first"; a "read with care" banner repeating it is pure noise.
+    cards = metric_cards(_minimal_row(status="revived", peak_at_boundary=True, has_secondary_peak=True))
+
+    assert "secondary peak" not in cards["flags"]
+    assert cards["flags"] == "peak near window edge"
 
 
 def test_metric_cards_empty_flags_string_when_no_caveats():
@@ -174,3 +183,21 @@ def test_catalog_notes_returns_the_catalogs_notes_field(catalog):
 
 def test_catalog_notes_returns_placeholder_for_an_unknown_trend_id(catalog):
     assert catalog_notes("not-in-catalog") == NO_NOTES
+
+
+# ---- status_explanation ----------------------------------------------------
+
+
+def test_status_explanation_returns_only_the_gloss_after_the_dash():
+    assert status_explanation("pre_peak") == "still climbing toward its peak"
+
+
+def test_status_explanation_is_empty_for_a_label_that_needs_no_expansion():
+    # A page prints this beside a coloured pill already reading "collapsed";
+    # repeating the word there would be noise, so there is nothing to add.
+    assert status_explanation("collapsed") == ""
+    assert status_explanation("declining") == ""
+
+
+def test_status_explanation_handles_a_status_outside_the_label_table():
+    assert status_explanation("not_a_real_status") == ""

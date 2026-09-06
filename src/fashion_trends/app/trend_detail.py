@@ -45,6 +45,21 @@ STATUS_LABELS = {
 }
 
 
+def status_explanation(status: str) -> str:
+    """The plain-language half of a lifecycle label, or `""` when the label says it all.
+
+    A page showing this alongside a coloured status pill has already printed
+    the label itself, so rendering `metric_cards`'s full "Collapsed" next to a
+    pill reading "collapsed" is pure repetition. Only the gloss -- the part of
+    `STATUS_LABELS` after the em dash, for the labels that have one -- tells a
+    reader something the pill didn't. Returns `""` for `collapsed` and
+    `declining`, whose one-word labels need no expansion.
+    """
+    label = STATUS_LABELS.get(status, status)
+    _, separator, explanation = label.partition("—")
+    return explanation.strip() if separator else ""
+
+
 def _format_peak_value(row: pd.Series) -> str:
     if pd.notna(row["peak_value"]):
         return f"{row['peak_value']:.0f}"

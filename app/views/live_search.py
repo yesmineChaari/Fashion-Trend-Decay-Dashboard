@@ -16,6 +16,8 @@ from dataclasses import replace
 import streamlit as st
 
 from fashion_trends.app.data import get_settings
+from fashion_trends.app.explainers import render_explainer
+from fashion_trends.app.layout import render_chart, render_page_heading
 from fashion_trends.app.live_search import (
     AD_HOC_NOTICE,
     MIN_SECONDS_BETWEEN_LOOKUPS,
@@ -25,14 +27,18 @@ from fashion_trends.app.live_search import (
     normalize_keyword,
     seconds_until_next_lookup,
 )
-from fashion_trends.app.trend_detail import metric_cards
+from fashion_trends.app.styles import render_note, status_pill
+from fashion_trends.app.trend_detail import metric_cards, status_explanation
 from fashion_trends.ingest.pytrends_client import TrendsClientError
 from fashion_trends.viz.trend_detail import plot_trend_series
 
 LAST_LOOKUP_KEY = "live_search_last_lookup_at"
 
-st.title("Live search")
-st.caption("Analyse any fashion keyword, not just the curated catalog. Results are pulled from Google Trends when you submit.")
+render_page_heading(
+    "Live search",
+    "Run the same analysis on any keyword, not just the curated catalog. Fetched from Google Trends when "
+    "you submit, and never written to the curated dataset.",
+)
 
 settings = get_settings()
 
@@ -48,11 +54,18 @@ with st.form("live_search"):
         help="Google Trends timeframe string. 'today 5-y' is the longest window still returning weekly data.",
     )
     geo = geo_column.text_input("Geo", value=settings.geo, help="Two-letter country code, or blank for worldwide.")
-    submitted = st.form_submit_button("Analyse")
+    submitted = st.form_submit_button("Analyse", type="primary")
 
 keyword = normalize_keyword(keyword_input)
 
 if not submitted:
+    # An empty page under an empty form reads as broken rather than as
+    # waiting, so the pre-search state says what makes a keyword work -- the
+    # thing that decides whether a first attempt returns anything usable.
+    render_note(
+        "Specific, widely-searched phrases work best — a garment, an aesthetic, or a named look, the way "
+        f"someone would type it. One lookup every {MIN_SECONDS_BETWEEN_LOOKUPS:.0f} seconds."
+    )
     st.stop()
 
 if not keyword:
@@ -69,14 +82,15 @@ st.session_state[LAST_LOOKUP_KEY] = time.monotonic()
 # geo overrides live in `settings` — so re-submitting a keyword already
 # looked at this session re-renders it without spending another request.
 try:
-    result = lookup_keyword(keyword, replace(settings, timeframe=timeframe, geo=geo))
+    with st.spinner(f"Fetching “{keyword}” from Google Trends…"):
+        result = lookup_keyword(keyword, replace(settings, timeframe=timeframe, geo=geo))
 except TrendsClientError as error:
     st.error(describe_failure(error))
     st.stop()
 
-st.subheader(result.keyword)
-st.caption(f"Window **{result.timeframe}**  ·  Geo **{result.geo}**")
-st.info(AD_HOC_NOTICE)
+# ---- the result -------------------------------------------------------
+
+render_page_heading(result.keyword)
 
 if result.sparse:
     # Metrics were computed — the chart's peak and half-life annotations read
@@ -84,6 +98,14 @@ if result.sparse:
     st.warning(SPARSE_MESSAGE)
 else:
     cards = metric_cards(result.metrics_row)
+    explanation = status_explanation(result.metrics_row["status"])
+    st.markdown(
+        f"{status_pill(result.metrics_row['status'])}&nbsp;&nbsp;"
+        f'<span style="font-size:0.85rem;">{explanation + " · " if explanation else ""}'
+        f"window <strong>{result.timeframe}</strong> · geo <strong>{result.geo or 'worldwide'}</strong></span>",
+        unsafe_allow_html=True,
+    )
+
     card_columns = st.columns(5)
     card_columns[0].metric("Peak value", cards["peak_value"])
     card_columns[1].metric("Peak date", cards["peak_date"])
@@ -91,8 +113,11 @@ else:
     card_columns[3].metric("Decay rate", cards["decay_rate"])
     card_columns[4].metric("Weeks to 50%", cards["weeks_to_half"])
 
-    st.caption(f"Status: **{cards['status']}**")
     if cards["flags"]:
-        st.caption(f"Caveats: {cards['flags']}")
+        st.warning(f"**Read with care:** {cards['flags']}.")
 
-st.pyplot(plot_trend_series(result.series, result.metrics_row))
+with st.container(border=True):
+    render_chart(plot_trend_series(result.series, result.metrics_row))
+    render_explainer("live_series")
+
+st.caption(AD_HOC_NOTICE)

@@ -1,0 +1,21 @@
+# Streamlit's own theme knobs, set here rather than passed on the command
+# line so `streamlit run app/streamlit_app.py` and `python tasks.py app`
+# produce the identical look with no flags to remember.
+#
+# These four colours are the only ones Streamlit applies to its own chrome
+# (sidebar, widgets, focus rings). Everything else in the dashboard's look —
+# typography, cards, pills, spacing — is `fashion_trends.app.styles`, and the
+# palette below is duplicated there as PALETTE because a TOML file cannot be
+# imported. Change one, change the other.
+
+[theme]
+base = "light"
+primaryColor = "#D55E00"
+backgroundColor = "#FBFAF8"
+secondaryBackgroundColor = "#F3EFE9"
+textColor = "#1F1C1A"
+font = "sans serif"
+
+[client]
+toolbarMode = "minimal"
+showErrorDetails = true

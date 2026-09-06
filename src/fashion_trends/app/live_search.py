@@ -77,11 +77,10 @@ SPARSE_NONZERO_FRACTION = 0.25
 MIN_SECONDS_BETWEEN_LOOKUPS = 3.0
 
 AD_HOC_NOTICE = (
-    "Ad-hoc result: pulled just now, on its own scale. Unlike the curated "
-    "set it was not fetched alongside the shared anchor keyword, so it is "
-    "**not normalized against the ranked table** — its decay metrics are "
-    "measured against its own peak and stand on their own, but its interest "
-    "values are not directly comparable to another trend's."
+    "This result was just pulled for the keyword you typed, on its own scale — "
+    "its height isn't directly comparable to trends in the curated catalog. "
+    "The numbers above it are still solid, though: each is measured against "
+    "this keyword's own peak, not against anything else."
 )
 
 NO_DATA_MESSAGE = "Not enough search volume for this term. Try a broader phrasing."

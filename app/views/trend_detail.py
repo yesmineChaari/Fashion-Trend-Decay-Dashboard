@@ -1,11 +1,13 @@
-"""Trend detail page.
+"""Trend detail page: one trend, end to end.
 
-Single-trend deep dive, picked from the selector below: the full weekly
-series with its peak and half-life annotated, headline metric cards, its
-decay curve against the median of the set, and its catalog metadata. All the
-shaping and chart-building logic lives in `fashion_trends.app.trend_detail`
-and `fashion_trends.viz.trend_detail` so it can be unit tested without a
-running Streamlit script; this page only wires widgets to it.
+A single-trend deep dive picked from the selector at the top: the exact
+keyword queried, the headline metric cards, the full weekly series with its
+peak and half-life annotated, and this trend's decay against the median of
+the set.
+
+All the shaping lives in `fashion_trends.app.trend_detail`, the charts in
+`fashion_trends.viz.trend_detail`, and the chart copy in
+`fashion_trends.app.explainers`, so this page only wires widgets to them.
 """
 
 from __future__ import annotations
@@ -13,10 +15,11 @@ from __future__ import annotations
 import streamlit as st
 
 from fashion_trends.app.data import get_settings, load_dashboard_data
-from fashion_trends.app.trend_detail import catalog_notes, metric_cards
+from fashion_trends.app.explainers import render_explainer
+from fashion_trends.app.layout import render_chart, render_page_heading
+from fashion_trends.app.styles import status_pill
+from fashion_trends.app.trend_detail import metric_cards, status_explanation
 from fashion_trends.viz.trend_detail import plot_trend_series, plot_trend_vs_median
-
-st.title("Trend detail")
 
 series, metrics = load_dashboard_data(get_settings())
 
@@ -24,32 +27,48 @@ if metrics.empty:
     st.info("No trend data loaded.")
     st.stop()
 
-trend_ids_by_name = dict(zip(metrics["display_name"], metrics["trend_id"], strict=True))
-selected_name = st.selectbox("Trend", sorted(trend_ids_by_name))
-trend_id = trend_ids_by_name[selected_name]
+# ---- pick a trend -----------------------------------------------------
 
+trend_ids_by_name = dict(zip(metrics["display_name"], metrics["trend_id"], strict=True))
+selector_column, _spacer = st.columns([1, 2])
+selected_name = selector_column.selectbox("Trend", sorted(trend_ids_by_name))
+
+trend_id = trend_ids_by_name[selected_name]
 row = metrics.loc[metrics["trend_id"] == trend_id].iloc[0]
 trend_series = series.loc[series["trend_id"] == trend_id]
+cards = metric_cards(row)
+
+# ---- headline ---------------------------------------------------------
+
+render_page_heading(selected_name)
 
 # The exact keyword queried is always visible, regardless of which metrics
 # below turn out to be null -- the keyword choice shapes every number on
 # this page, so it can't be something a reader has to go dig for.
-st.caption(f"Keyword queried: **{row['keyword']}**  ·  Category: **{row['category']}**")
+explanation = status_explanation(row["status"])
+st.markdown(
+    f"{status_pill(row['status'])}&nbsp;&nbsp;"
+    f'<span style="font-size:0.85rem;">{explanation + " · " if explanation else ""}'
+    f"searched as <strong>“{row['keyword']}”</strong> · category <strong>{row['category']}</strong></span>",
+    unsafe_allow_html=True,
+)
 
-cards = metric_cards(row)
 card_columns = st.columns(5)
-card_columns[0].metric("Peak value", cards["peak_value"])
-card_columns[1].metric("Peak date", cards["peak_date"])
-card_columns[2].metric("% dropped", cards["pct_dropped"])
-card_columns[3].metric("Decay rate", cards["decay_rate"])
-card_columns[4].metric("Weeks to 50%", cards["weeks_to_half"])
+card_columns[0].metric("Peak value", cards["peak_value"], help="Interest at the peak week, on this trend's own 0-100 scale.")
+card_columns[1].metric("Peak date", cards["peak_date"], help="The week this trend's search interest was highest.")
+card_columns[2].metric("% dropped", cards["pct_dropped"], help="How far it has fallen from that peak to where it sits now.")
+card_columns[3].metric("Decay rate", cards["decay_rate"], help="Percentage points of the peak lost per week since peaking.")
+card_columns[4].metric("Weeks to 50%", cards["weeks_to_half"], help="Weeks from the peak until it stayed below half of it.")
 
-st.caption(f"Status: **{cards['status']}**")
 if cards["flags"]:
-    st.caption(f"Caveats: {cards['flags']}")
+    st.warning(f"**Read with care:** {cards['flags']}.")
 
-st.pyplot(plot_trend_series(trend_series, row))
-st.pyplot(plot_trend_vs_median(series, metrics, trend_id))
+# ---- charts -----------------------------------------------------------
 
-st.subheader("Curation notes")
-st.write(catalog_notes(trend_id))
+with st.container(border=True):
+    render_chart(plot_trend_series(trend_series, row))
+    render_explainer("trend_series")
+
+with st.container(border=True):
+    render_chart(plot_trend_vs_median(series, metrics, trend_id))
+    render_explainer("trend_vs_median")

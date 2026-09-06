@@ -19,10 +19,17 @@ fastest collapses and the slowest fades, picked by `select_highlighted_trends`
 — while every other eligible trend still draws, just faint and grey. That
 contrast is what lets a reader tell a fast-collapse trend from a slow-fade
 one without reading the legend.
+
+Each highlighted line also gets its own colour, from `HIGHLIGHT_COLORS`
+rather than from its category: category has only four colours, so two
+highlighted trends sharing one would otherwise draw identically and be
+impossible to tell apart on the plot despite the legend naming them
+separately.
 """
 
 from __future__ import annotations
 
+import itertools
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -31,7 +38,7 @@ import pandas as pd
 
 from fashion_trends.metrics.decay import HALF_LIFE_CROSSED, HALF_LIFE_STILL_ABOVE
 from fashion_trends.settings import Settings
-from fashion_trends.viz.theme import apply_theme, category_style, save_figure
+from fashion_trends.viz.theme import apply_theme, category_style, line_chart_grid, save_figure
 
 if TYPE_CHECKING:
     from matplotlib.figure import Figure
@@ -51,6 +58,25 @@ FAINT_COLOR = "#B0B0B0"
 FAINT_ALPHA = 0.5
 FAINT_LINEWIDTH = 1.0
 HIGHLIGHT_LINEWIDTH = 2.2
+
+# A highlighted line's colour comes from this rotation, one per line, rather
+# than from its category: `category_style` only has four colours, so two
+# highlighted trends sharing a category would draw identically otherwise --
+# indistinguishable from each other despite the legend naming them
+# separately. The full eight-colour Okabe-Ito palette covers every
+# highlighted line even at the default 3 fastest + 3 slowest, with room to
+# spare if either count grows; `itertools.cycle` only repeats a colour if it
+# ever doesn't.
+HIGHLIGHT_COLORS = [
+    "#0072B2",  # blue
+    "#D55E00",  # vermillion
+    "#009E73",  # bluish green
+    "#E69F00",  # orange
+    "#CC79A7",  # reddish purple
+    "#56B4E9",  # sky blue
+    "#F0E442",  # yellow
+    "#000000",  # black
+]
 
 HALF_LIFE_REFERENCE_PCT = 50.0
 
@@ -87,6 +113,11 @@ def select_highlighted_trends(
     slowest = eligible[eligible["time_to_half_status"] == HALF_LIFE_STILL_ABOVE].nlargest(n_slow, "weeks_since_peak")["trend_id"]
 
     return set(fastest) | set(slowest)
+
+
+def _highlight_color_map(highlighted: set[str]) -> dict[str, str]:
+    """One colour per highlighted `trend_id`, sorted for a stable assignment run to run."""
+    return dict(zip(sorted(highlighted), itertools.cycle(HIGHLIGHT_COLORS)))
 
 
 def build_decay_curve_frame(series: pd.DataFrame, metrics: pd.DataFrame) -> pd.DataFrame:
@@ -136,8 +167,10 @@ def plot_decay_curves(series: pd.DataFrame, metrics: pd.DataFrame) -> Figure:
     apply_theme()
     frame = build_decay_curve_frame(series, metrics)
     highlighted = select_highlighted_trends(metrics)
+    highlight_colors = _highlight_color_map(highlighted)
 
     fig, ax = plt.subplots()
+    line_chart_grid(ax)
 
     for trend_id, group in frame.groupby("trend_id", sort=False):
         group = group.sort_values("weeks_since_peak")
@@ -147,7 +180,7 @@ def plot_decay_curves(series: pd.DataFrame, metrics: pd.DataFrame) -> Figure:
                 group["weeks_since_peak"],
                 group["pct_of_peak"],
                 label=group["display_name"].iloc[0],
-                color=style["color"],
+                color=highlight_colors[trend_id],
                 linestyle=style["linestyle"],
                 linewidth=HIGHLIGHT_LINEWIDTH,
                 zorder=3,
@@ -173,7 +206,7 @@ def plot_decay_curves(series: pd.DataFrame, metrics: pd.DataFrame) -> Figure:
 
     caption = _excluded_caption(metrics)
     if caption:
-        fig.text(0.01, 0.04, caption, ha="left", va="bottom", fontsize=7, color="#555555", style="italic")
+        fig.text(0.01, 0.04, caption, ha="left", va="bottom", fontsize=7, color="#6B645C", style="italic")
 
     return fig
 

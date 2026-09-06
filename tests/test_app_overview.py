@@ -12,6 +12,7 @@ from fashion_trends.app.overview import (
     JUST_PEAKED,
     NEVER_HALVED,
     NO_PEAK_DETECTED,
+    OVERVIEW_COLUMN_HELP,
     OVERVIEW_COLUMNS,
     STILL_RISING,
     filter_metrics,
@@ -126,6 +127,22 @@ def test_filter_metrics_empty_when_nothing_matches(metrics):
     assert filtered.empty
 
 
+# ---- OVERVIEW_COLUMN_HELP ----------------------------------------------------
+
+
+def test_every_displayed_column_has_help_text():
+    assert set(OVERVIEW_COLUMN_HELP) == set(OVERVIEW_COLUMNS)
+
+
+def test_column_help_is_written_for_a_reader_not_a_maintainer():
+    # Hover text is the first explanation most readers meet, so it carries no
+    # module paths, no function names, and no parenthetical asides -- see the
+    # comment above OVERVIEW_COLUMN_HELP.
+    for column, help_text in OVERVIEW_COLUMN_HELP.items():
+        assert "fashion_trends." not in help_text, column
+        assert "(" not in help_text, column
+
+
 # ---- summary_tiles ----------------------------------------------------
 
 
@@ -156,6 +173,21 @@ def test_summary_tiles_medians_are_none_when_nothing_qualifies(metrics):
 
     assert tiles["median_pct_dropped"] is None
     assert tiles["median_weeks_to_half"] is None
+
+
+def test_summary_tiles_fastest_collapse_names_the_quickest_crossing_trend(metrics):
+    tiles = summary_tiles(metrics)
+
+    # Only "fast" crosses half its peak within the window (see test_rankings.py).
+    name = metrics.loc[metrics["trend_id"] == "fast", "display_name"].iloc[0]
+    weeks = metrics.loc[metrics["trend_id"] == "fast", "weeks_to_half"].iloc[0]
+    assert tiles["fastest_collapse"] == (name, weeks)
+
+
+def test_summary_tiles_fastest_collapse_is_none_when_nothing_crossed(metrics):
+    only_rising = metrics[metrics["trend_id"] == "rising"]
+
+    assert summary_tiles(only_rising)["fastest_collapse"] is None
 
 
 # ---- format_overview_table ----------------------------------------------------
@@ -232,12 +264,22 @@ def test_format_overview_table_labels_zero_weeks_since_peak_as_just_peaked():
 
 
 def test_format_overview_table_lists_active_flags():
-    table = format_overview_table(_minimal_row(peak_at_boundary=True, has_secondary_peak=True))
+    table = format_overview_table(_minimal_row(status="pre_peak", peak_at_boundary=True, has_secondary_peak=True))
 
     flags = table.iloc[0]["flags"]
     assert "peak near window edge" in flags
     assert "secondary peak (revival)" in flags
     assert "low-resolution data" not in flags
+
+
+def test_format_overview_table_leaves_the_second_peak_out_of_a_revived_row():
+    # The Status column already reads "revived", and it reads that *because* a
+    # second peak was found -- repeating it as a caveat says nothing new.
+    table = format_overview_table(_minimal_row(status="revived", peak_at_boundary=True, has_secondary_peak=True))
+
+    flags = table.iloc[0]["flags"]
+    assert "secondary peak" not in flags
+    assert flags == "peak near window edge"
 
 
 def test_format_overview_table_empty_flags_string_when_no_caveats():

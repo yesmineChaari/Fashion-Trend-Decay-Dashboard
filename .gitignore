@@ -14,7 +14,10 @@ __pycache__/
 .venv/
 venv/
 
-.streamlit/
+# The dashboard's theme is part of the project and ships with it; anything
+# else Streamlit drops in here (secrets.toml above all) does not.
+.streamlit/*
+!.streamlit/config.toml
 
 *.egg-info/
 build/

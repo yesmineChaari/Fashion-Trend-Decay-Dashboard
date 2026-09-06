@@ -45,7 +45,7 @@ from fashion_trends.metrics.status import (
     STATUS_STABILIZED,
 )
 from fashion_trends.settings import Settings
-from fashion_trends.viz.theme import apply_theme, save_figure, status_style
+from fashion_trends.viz.theme import apply_theme, bar_chart_grid, save_figure, status_style
 
 if TYPE_CHECKING:
     from matplotlib.figure import Figure
@@ -62,7 +62,9 @@ FIGURE_WIDTH = 10.0
 STILL_ABOVE_COLOR = "#999999"
 STILL_ABOVE_HATCH = "//"
 CAPTION_FONTSIZE = 7
-CAPTION_COLOR = "#555555"
+CAPTION_COLOR = "#6B645C"
+VALUE_LABEL_COLOR = "#1F1C1A"
+
 
 # Fixed legend order for the drop ranking's status swatches -- `pre_peak` and
 # `unknown` never reach that chart's bars (see the module docstring), so they
@@ -126,13 +128,16 @@ def plot_drop_ranking(metrics: pd.DataFrame) -> Figure:
     ranked = build_drop_ranking_frame(metrics).iloc[::-1].reset_index(drop=True)
 
     fig, ax = plt.subplots(figsize=(FIGURE_WIDTH, _figure_height(len(ranked))))
+    bar_chart_grid(ax)
 
     y_positions = range(len(ranked))
     colors = [status_style(status) for status in ranked["status"]]
     ax.barh(y_positions, ranked["pct_dropped"], color=colors, height=BAR_HEIGHT, zorder=2)
 
     for y, pct in zip(y_positions, ranked["pct_dropped"], strict=True):
-        ax.text(pct + VALUE_LABEL_GAP, y, f"{pct:.0f}%", va="center", fontsize=8)
+        ax.text(
+            pct + VALUE_LABEL_GAP, y, f"{pct:.0f}%", va="center", fontsize=8.5, fontweight="semibold", color=VALUE_LABEL_COLOR
+        )
 
     ax.set_yticks(list(y_positions))
     ax.set_yticklabels(
@@ -214,6 +219,7 @@ def plot_time_to_decline(metrics: pd.DataFrame) -> Figure:
     crossed, still_above = build_time_to_decline_frames(metrics)
 
     fig, ax = plt.subplots(figsize=(FIGURE_WIDTH, _figure_height(len(crossed) + len(still_above))))
+    bar_chart_grid(ax)
 
     yticks: list[int] = []
     yticklabels: list[str] = []
@@ -236,7 +242,15 @@ def plot_time_to_decline(metrics: pd.DataFrame) -> Figure:
         )
         for _, row in still_above.iterrows():
             ax.barh(y, row["weeks_since_peak"], color=STILL_ABOVE_COLOR, hatch=STILL_ABOVE_HATCH, height=BAR_HEIGHT, zorder=2)
-            ax.text(row["weeks_since_peak"] + VALUE_LABEL_GAP, y, f"{int(row['weeks_since_peak'])}+ wk", va="center", fontsize=8)
+            ax.text(
+                row["weeks_since_peak"] + VALUE_LABEL_GAP,
+                y,
+                f"{int(row['weeks_since_peak'])}+ wk",
+                va="center",
+                fontsize=8.5,
+                fontweight="semibold",
+                color=VALUE_LABEL_COLOR,
+            )
             yticks.append(y)
             yticklabels.append(row["display_name"])
             y += 1
@@ -249,7 +263,15 @@ def plot_time_to_decline(metrics: pd.DataFrame) -> Figure:
     for _, row in crossed.iloc[::-1].iterrows():
         color = status_style(row["status"])
         ax.barh(y, row["weeks_to_half"], color=color, height=BAR_HEIGHT, zorder=2)
-        ax.text(row["weeks_to_half"] + VALUE_LABEL_GAP, y, f"{int(row['weeks_to_half'])} wk", va="center", fontsize=8)
+        ax.text(
+            row["weeks_to_half"] + VALUE_LABEL_GAP,
+            y,
+            f"{int(row['weeks_to_half'])} wk",
+            va="center",
+            fontsize=8.5,
+            fontweight="semibold",
+            color=VALUE_LABEL_COLOR,
+        )
         yticks.append(y)
         yticklabels.append(row["display_name"])
         y += 1

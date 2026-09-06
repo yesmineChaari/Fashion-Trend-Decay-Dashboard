@@ -3,7 +3,8 @@
 
     streamlit run app/streamlit_app.py
 
-Renders the global header (data pull date, timeframe, geo) and hands off to
+Renders the shared chrome — the masthead (headline, standfirst, and the
+pull date/timeframe/geo chips) and the sidebar glossary — then hands off to
 one of three pages via `st.navigation`: Overview, Trend detail, and Live
 search (see `app/views/`), each of which loads its own data through
 `fashion_trends.app.data.load_dashboard_data`. That loader is wrapped in
@@ -28,9 +29,15 @@ from __future__ import annotations
 import streamlit as st
 
 from fashion_trends.app.data import ProcessedDataMissingError, get_settings, load_dashboard_data
-from fashion_trends.app.layout import render_header, render_missing_data_screen
+from fashion_trends.app.layout import render_header, render_missing_data_screen, render_sidebar
 
-st.set_page_config(page_title="Fashion Trends", layout="wide")
+st.set_page_config(
+    page_title="Fashion Trends — the half-life of a micro-trend",
+    page_icon="📉",
+    layout="wide",
+    initial_sidebar_state="expanded",
+    menu_items={"about": "Measuring how fast fashion micro-trends rise and fall, from Google Trends search interest."},
+)
 
 settings = get_settings()
 
@@ -48,8 +55,15 @@ render_header(metrics)
 # used here (Streamlit warns "st.navigation was called in an app with a
 # pages/ directory" and recommends this exact rename).
 pages = [
-    st.Page("views/overview.py", title="Overview", icon="📊", default=True),
-    st.Page("views/trend_detail.py", title="Trend detail", icon="🔍"),
-    st.Page("views/live_search.py", title="Live search", icon="🔎"),
+    st.Page("views/overview.py", title="Overview", default=True),
+    st.Page("views/trend_detail.py", title="Trend detail"),
+    st.Page("views/live_search.py", title="Live search"),
 ]
-st.navigation(pages).run()
+navigation = st.navigation(pages)
+
+# After `st.navigation` so the glossary sits below the page links rather than
+# above them, and before `.run()` so it is on screen while a page is still
+# rendering its charts.
+render_sidebar(metrics)
+
+navigation.run()
