@@ -13,6 +13,7 @@ from fashion_trends.viz.build import ProcessedDataMissingError
 
 if TYPE_CHECKING:
     from matplotlib.figure import Figure
+    from plotly.graph_objects import Figure as PlotlyFigure
 
 WORDMARK = "Fashion Trends"
 STANDFIRST = (
@@ -78,6 +79,11 @@ def render_chart(fig: Figure) -> None:
     """Render a matplotlib figure and close it, so reruns don't leak figures."""
     st.pyplot(fig)
     plt.close(fig)
+
+
+def render_interactive_chart(fig: PlotlyFigure) -> None:
+    """Render a Plotly figure with pan/zoom/hover enabled, sized to the container."""
+    st.plotly_chart(fig, use_container_width=True, config={"displaylogo": False, "scrollZoom": True})
 
 
 def render_sidebar(metrics: pd.DataFrame) -> None:

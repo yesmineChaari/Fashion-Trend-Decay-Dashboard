@@ -13,7 +13,7 @@ import streamlit as st
 
 from fashion_trends.app.data import get_settings
 from fashion_trends.app.explainers import render_explainer
-from fashion_trends.app.layout import render_chart, render_page_heading
+from fashion_trends.app.layout import render_interactive_chart, render_page_heading
 from fashion_trends.app.live_search import (
     AD_HOC_NOTICE,
     MIN_SECONDS_BETWEEN_LOOKUPS,
@@ -106,7 +106,7 @@ else:
         st.warning(f"**Read with care:** {cards['flags']}.")
 
 with st.container(border=True):
-    render_chart(plot_trend_series(result.series, result.metrics_row))
+    render_interactive_chart(plot_trend_series(result.series, result.metrics_row))
     render_explainer("live_series")
 
 st.caption(AD_HOC_NOTICE)

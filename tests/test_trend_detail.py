@@ -110,11 +110,11 @@ def _row(metrics, trend_id):
 
 
 def _legend_labels(fig):
-    return {text.get_text() for text in fig.axes[0].get_legend().get_texts()}
+    return {trace.name for trace in fig.data if trace.showlegend is not False and trace.name}
 
 
 def _captions(fig):
-    return [child.get_text() for child in fig.texts]
+    return [annotation.text for annotation in fig.layout.annotations]
 
 
 # ---- plot_trend_series ----------------------------------------------------

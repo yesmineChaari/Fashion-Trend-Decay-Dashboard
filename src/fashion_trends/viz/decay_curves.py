@@ -12,6 +12,12 @@ spaghetti, so only the fastest collapses and slowest fades (picked by
 `select_highlighted_trends`) are drawn bold and labelled, each in its own
 colour from `HIGHLIGHT_COLORS` rather than its category's (only four
 category colours exist, too few to keep several highlighted trends apart).
+
+`plot_decay_curves` (matplotlib, static) is what `save_decay_curves_figure`
+and `scripts/build_charts.py` write to `outputs/figures/`.
+`plot_decay_curves_interactive` (Plotly) is the dashboard Overview page's
+copy of the same overlay, sharing every helper above with it so the two
+never drift apart; it's the one with pan/zoom/hover.
 """
 
 from __future__ import annotations
@@ -22,10 +28,19 @@ from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import pandas as pd
+import plotly.graph_objects as go
 
 from fashion_trends.metrics.decay import HALF_LIFE_CROSSED, HALF_LIFE_STILL_ABOVE
 from fashion_trends.settings import Settings
-from fashion_trends.viz.theme import apply_theme, category_style, line_chart_grid, save_figure
+from fashion_trends.viz.theme import (
+    DASH_BY_LINESTYLE,
+    apply_theme,
+    category_style,
+    line_chart_grid,
+    plotly_caption_annotation,
+    plotly_layout_defaults,
+    save_figure,
+)
 
 if TYPE_CHECKING:
     from matplotlib.figure import Figure
@@ -160,6 +175,64 @@ def plot_decay_curves(series: pd.DataFrame, metrics: pd.DataFrame) -> Figure:
     caption = _excluded_caption(metrics)
     if caption:
         fig.text(0.01, 0.04, caption, ha="left", va="bottom", fontsize=7, color="#6B645C", style="italic")
+
+    return fig
+
+
+def plot_decay_curves_interactive(series: pd.DataFrame, metrics: pd.DataFrame) -> go.Figure:
+    """`plot_decay_curves`, as an interactive Plotly figure for the dashboard. See the module docstring."""
+    frame = build_decay_curve_frame(series, metrics)
+    highlighted = select_highlighted_trends(metrics)
+    highlight_colors = _highlight_color_map(highlighted)
+
+    fig = go.Figure()
+
+    for trend_id, group in frame.groupby("trend_id", sort=False):
+        group = group.sort_values("weeks_since_peak")
+        display_name = group["display_name"].iloc[0]
+        if trend_id in highlighted:
+            style = category_style(group["category"].iloc[0])
+            fig.add_trace(
+                go.Scatter(
+                    x=group["weeks_since_peak"],
+                    y=group["pct_of_peak"],
+                    mode="lines",
+                    name=display_name,
+                    line={
+                        "color": highlight_colors[trend_id],
+                        "width": HIGHLIGHT_LINEWIDTH,
+                        "dash": DASH_BY_LINESTYLE.get(style["linestyle"], "solid"),
+                    },
+                )
+            )
+        else:
+            fig.add_trace(
+                go.Scatter(
+                    x=group["weeks_since_peak"],
+                    y=group["pct_of_peak"],
+                    mode="lines",
+                    name=display_name,
+                    line={"color": FAINT_COLOR, "width": FAINT_LINEWIDTH},
+                    opacity=FAINT_ALPHA,
+                    showlegend=False,
+                )
+            )
+
+    fig.add_hline(y=HALF_LIFE_REFERENCE_PCT, line={"color": "#333333", "width": 1, "dash": "dash"})
+    fig.add_vline(x=0, line={"color": "#999999", "width": 0.8})
+
+    fig.update_layout(**plotly_layout_defaults())
+    fig.update_layout(
+        hovermode="closest",  # "x unified" over ~20 overlapping lines is unreadable
+        xaxis_title="Weeks since peak",
+        yaxis_title="% of trend's own peak",
+        title={"text": "Peak-aligned decay curves", "x": 0, "xanchor": "left"},
+        legend={"orientation": "v", "x": 1, "xanchor": "right", "y": 1, "yanchor": "top", "title": "Fastest & slowest"},
+    )
+
+    caption = _excluded_caption(metrics)
+    if caption:
+        fig.add_annotation(plotly_caption_annotation(caption))
 
     return fig
 

@@ -151,6 +151,54 @@ def status_style(status: str) -> str:
     return STATUS_COLORS.get(status, FALLBACK_STATUS_COLOR)
 
 
+# matplotlib linestyle -> Plotly dash style, since `category_style` speaks
+# matplotlib's vocabulary and is shared with the static charts.
+DASH_BY_LINESTYLE: dict[str, str] = {"-": "solid", "--": "dash", "-.": "dashdot", ":": "dot"}
+
+
+def plotly_layout_defaults() -> dict[str, Any]:
+    """Shared Plotly `update_layout` kwargs mirroring `apply_theme`'s rcParams, for the dashboard's interactive charts.
+
+    Y-axis grid only, no top/right box, hairline colours matching the static
+    figures, so a Plotly chart sits next to a matplotlib one without clashing.
+    """
+    return {
+        "plot_bgcolor": FIGURE_FACECOLOR,
+        "paper_bgcolor": FIGURE_FACECOLOR,
+        "font": {"family": ", ".join(FONT_STACK), "color": TEXT_COLOR, "size": 13},
+        "xaxis": {"showgrid": False, "zeroline": False, "linecolor": SPINE_COLOR, "tickfont": {"color": MUTED_TEXT_COLOR}},
+        "yaxis": {
+            "showgrid": True,
+            "gridcolor": GRID_COLOR,
+            "zeroline": False,
+            "linecolor": SPINE_COLOR,
+            "tickfont": {"color": MUTED_TEXT_COLOR},
+        },
+        "legend": {"bgcolor": FIGURE_FACECOLOR, "bordercolor": GRID_COLOR, "borderwidth": 1},
+        "margin": {"t": 60, "l": 60, "r": 20, "b": 60},
+        "hovermode": "x unified",
+    }
+
+
+def plotly_caption_annotation(text: str) -> dict[str, Any]:
+    """A Plotly layout annotation for a caption pinned to the bottom-left corner, italic like the static charts'.
+
+    Pass to `fig.add_annotation(plotly_caption_annotation(text))`.
+    """
+    return {
+        "text": f"<i>{text}</i>",
+        "xref": "paper",
+        "yref": "paper",
+        "x": 0,
+        "y": -0.22,
+        "xanchor": "left",
+        "yanchor": "top",
+        "showarrow": False,
+        "align": "left",
+        "font": {"size": 11, "color": MUTED_TEXT_COLOR},
+    }
+
+
 def _format_pull_date(pull_date: Any) -> str:
     if hasattr(pull_date, "date"):
         return pull_date.date().isoformat()

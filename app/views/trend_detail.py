@@ -10,7 +10,7 @@ import streamlit as st
 
 from fashion_trends.app.data import get_settings, load_dashboard_data
 from fashion_trends.app.explainers import render_explainer
-from fashion_trends.app.layout import render_chart, render_page_heading
+from fashion_trends.app.layout import render_interactive_chart, render_page_heading
 from fashion_trends.app.styles import status_pill
 from fashion_trends.app.trend_detail import metric_cards, status_explanation
 from fashion_trends.viz.trend_detail import plot_trend_series, plot_trend_vs_median
@@ -57,9 +57,9 @@ if cards["flags"]:
 # ---- charts -----------------------------------------------------------
 
 with st.container(border=True):
-    render_chart(plot_trend_series(trend_series, row))
+    render_interactive_chart(plot_trend_series(trend_series, row))
     render_explainer("trend_series")
 
 with st.container(border=True):
-    render_chart(plot_trend_vs_median(series, metrics, trend_id))
+    render_interactive_chart(plot_trend_vs_median(series, metrics, trend_id))
     render_explainer("trend_vs_median")

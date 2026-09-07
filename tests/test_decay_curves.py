@@ -13,6 +13,7 @@ from fashion_trends.viz.decay_curves import (
     DEFAULT_FILENAME,
     build_decay_curve_frame,
     plot_decay_curves,
+    plot_decay_curves_interactive,
     save_decay_curves_figure,
     select_highlighted_trends,
 )
@@ -171,6 +172,32 @@ def test_plot_decay_curves_labels_only_the_highlighted_lines(metrics, series):
 
     ax = fig.axes[0]
     legend_labels = {text.get_text() for text in ax.get_legend().get_texts()}
+    assert legend_labels == {"Fast Trend", "Slow Trend"}
+
+
+# ---- plot_decay_curves_interactive ----------------------------------------------------
+
+
+def test_plot_decay_curves_interactive_draws_one_trace_per_eligible_trend(metrics, series):
+    fig = plot_decay_curves_interactive(series, metrics)
+
+    # The 0% and 50% reference lines are layout shapes, not traces, so this
+    # is exactly one trace per eligible trend (the pre-peak trend excluded).
+    assert len(fig.data) == 2
+    assert {trace.name for trace in fig.data} == {"Fast Trend", "Slow Trend"}
+
+
+def test_plot_decay_curves_interactive_captions_the_excluded_trend(metrics, series):
+    fig = plot_decay_curves_interactive(series, metrics)
+
+    caption_texts = [annotation.text for annotation in fig.layout.annotations]
+    assert any("Rising Trend" in text for text in caption_texts)
+
+
+def test_plot_decay_curves_interactive_labels_only_the_highlighted_lines(metrics, series):
+    fig = plot_decay_curves_interactive(series, metrics)
+
+    legend_labels = {trace.name for trace in fig.data if trace.showlegend is not False}
     assert legend_labels == {"Fast Trend", "Slow Trend"}
 
 

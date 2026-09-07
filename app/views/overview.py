@@ -10,7 +10,7 @@ import streamlit as st
 
 from fashion_trends.app.data import get_settings, load_dashboard_data
 from fashion_trends.app.explainers import render_explainer
-from fashion_trends.app.layout import render_chart
+from fashion_trends.app.layout import render_chart, render_interactive_chart
 from fashion_trends.app.overview import (
     ALL_CATEGORIES,
     ALL_STATUSES,
@@ -21,7 +21,7 @@ from fashion_trends.app.overview import (
     summary_tiles,
 )
 from fashion_trends.app.styles import render_metric_card, status_pill_row
-from fashion_trends.viz.decay_curves import plot_decay_curves
+from fashion_trends.viz.decay_curves import plot_decay_curves_interactive
 from fashion_trends.viz.rankings import plot_drop_ranking, plot_time_to_decline
 
 series, metrics = load_dashboard_data(get_settings())
@@ -78,7 +78,7 @@ curves_tab, drop_tab, time_tab, table_tab = st.tabs(
 )
 
 with curves_tab, st.container(border=True):
-    render_chart(plot_decay_curves(series, filtered))
+    render_interactive_chart(plot_decay_curves_interactive(series, filtered))
     render_explainer("decay_curves")
 
 with drop_tab, st.container(border=True):
