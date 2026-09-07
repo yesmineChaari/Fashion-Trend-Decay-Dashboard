@@ -1,24 +1,25 @@
 # fashion_trends
 
-Measuring how fast fashion micro-trends rise and fall, using Google Trends
-search interest as the signal. For each curated trend it finds the peak, then
-quantifies the decline off that peak: how much has dropped, how fast, and how
-long it took to lose half its peak — plus a rule-based lifecycle label
-(`pre_peak` / `declining` / `collapsed` / `stabilized` / `revived` / `unknown`).
+A toolkit for measuring how fast fashion micro-trends rise and fall, using
+Google Trends search interest as the signal. Point it at a curated list of
+trends and it finds each one's peak, then quantifies the decline off that
+peak: how much interest has dropped, how fast, and how long it took to lose
+half its peak — plus a rule-based lifecycle label (`pre_peak` / `declining` /
+`collapsed` / `stabilized` / `revived` / `unknown`). The goal is to turn a
+vague impression ("that trend feels over") into a number you can defend.
 
-## Scope (current phase)
+The pipeline feeds a Streamlit dashboard with three views:
 
-- **Local-only.** Cloned and run manually. Nothing here is deployed, and
-  there is no public web app.
-- **Google Trends only**, via `pytrends`. No Instagram/TikTok scraping or any
-  other social platform data.
-- **No ML or forecasting.** Lifecycle labelling is rule-based against
-  measured metrics, not a trained classifier — see
-  `fashion_trends.metrics.status`.
-- **No social-video references.** The project was sparked by a "viral
-  forgotten fashion trends" reel, but no output here cites, reproduces, or
-  fact-checks that video's numbers. Every figure is derived independently
-  from this repo's own pipeline.
+- **Overview** — the full catalog at a glance: peak-aligned decay curves,
+  a drop ranking, time-to-50% for every trend, and a sortable summary table.
+- **Trend detail** — a per-trend deep dive into a single micro-trend's rise,
+  peak, and decline.
+- **Live search** — look up any keyword on demand, fetched and analyzed live
+  from Google Trends without touching the curated dataset.
+
+Every chart ships with a plain-language summary and a "how to read this"
+panel, so the dashboard is usable without already knowing what a
+peak-aligned decay curve is.
 
 ## Setup
 
@@ -52,16 +53,10 @@ accept every field on `fashion_trends.settings.Settings` as a flag (e.g.
 figures (`outputs/figures/decay_curves.png`, `drop_ranking.png`,
 `time_to_decline.png`). It makes no network calls.
 
-The Streamlit dashboard reads the same processed parquet files. Its Overview
-page carries the three catalog-wide figures (the peak-aligned decay curves,
-the drop ranking, and time-to-50%) plus the full sortable table; Trend detail
-is a per-trend deep dive; and Live search is the one live path, fetching and
-analysing any single ad-hoc keyword on demand without touching the curated
-`data/processed/` artifacts. Every figure ships with a plain-language summary
-and a "how to read this chart" panel — an axis labelled "weeks since peak"
-means nothing on its own, and the copy for all of them lives in one place
-(`fashion_trends.app.explainers`) so no two pages describe the same chart
-differently.
+The dashboard reads the same processed parquet files as the static figures.
+Its chart copy (the summaries and "how to read this" panels) lives in one
+place, `fashion_trends.app.explainers`, so no two pages describe the same
+chart differently.
 
 ## Development
 
